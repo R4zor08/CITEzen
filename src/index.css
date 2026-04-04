@@ -1,0 +1,283 @@
+/* @import url() FONT IMPORTS MUST ALWAYS BE AT THE VERY TOP OF THIS FILE, ABOVE THE TAILWIND IMPORTS — DO NOT DELETE THIS COMMENT */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* CRITICAL: THE FOLLOWING TAILWIND IMPORTS MUST NEVER BE DELETED OR REORDERED — DO NOT DELETE THIS COMMENT */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* END TAILWIND IMPORTS — ALL OTHER CSS MUST GO BELOW THIS LINE */
+
+/* ===== THEME VARIABLES ===== */
+:root {
+  --bg-primary: #0A0A0F;
+  --bg-secondary: #12111A;
+  --bg-tertiary: #1A1625;
+  --bg-elevated: #231D35;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-hover: rgba(255, 255, 255, 0.1);
+  --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  --scrollbar-track: #0A0A0F;
+  --scrollbar-thumb: #1A1625;
+  --scrollbar-hover: #231D35;
+}
+.light {
+  --bg-primary: #f5f6fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #eef0f6;
+  --bg-elevated: #e4e7f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-color: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.92);
+  --glass-bg-hover: rgba(255, 255, 255, 1);
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 14px rgba(0,0,0,0.08), 0 10px 28px rgba(0,0,0,0.06);
+  --scrollbar-track: #f1f3f9;
+  --scrollbar-thumb: #c1c7d4;
+  --scrollbar-hover: #94a3b8;
+}
+@layer utilities {
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    box-shadow: var(--card-shadow);
+  }
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    transition: all 0.3s;
+  }
+  .glass-card:hover {
+    background: var(--glass-bg-hover);
+  }
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-cyan-400;
+  }
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+/* ===== LIGHT MODE OVERRIDES ===== */
+.light body,
+.light {
+  color: var(--text-primary);
+}
+/* Backgrounds */
+.light .bg-dark-900 { background: var(--bg-primary) !important; }
+.light .bg-dark-800 { background: var(--bg-secondary) !important; }
+.light .bg-dark-800\/50 { background: rgba(255,255,255,0.7) !important; }
+.light .bg-dark-800\/80 { background: rgba(255,255,255,0.85) !important; }
+.light .bg-dark-700 { background: var(--bg-tertiary) !important; }
+.light .bg-dark-700\/80 { background: rgba(241,243,249,0.85) !important; }
+.light .bg-dark-900\/50 { background: rgba(248,249,252,0.7) !important; }
+.light .bg-dark-900\/80 { background: rgba(248,249,252,0.9) !important; }
+.light .bg-dark-900\/95 { background: rgba(248,249,252,0.97) !important; }
+/* Text */
+.light .text-white { color: #111827 !important; }
+.light .text-gray-200 { color: #374151 !important; }
+.light .text-gray-300 { color: #4b5563 !important; }
+.light .text-gray-400 { color: #6b7280 !important; }
+.light .text-gray-500 { color: #9ca3af !important; }
+/* Borders */
+.light .border-white\/5 { border-color: rgba(0,0,0,0.07) !important; }
+.light .border-white\/10 { border-color: rgba(0,0,0,0.12) !important; }
+.light .border-white\/20 { border-color: rgba(0,0,0,0.16) !important; }
+/* Surface backgrounds */
+.light .bg-white\/5 { background: rgba(0,0,0,0.03) !important; }
+.light .bg-white\/10 { background: rgba(0,0,0,0.06) !important; }
+.light .hover\:bg-white\/5:hover { background: rgba(0,0,0,0.05) !important; }
+.light .hover\:bg-white\/10:hover { background: rgba(0,0,0,0.08) !important; }
+/* Focus rings */
+.light .ring-dark-900 { --tw-ring-color: var(--bg-primary) !important; }
+.light .focus\:ring-offset-dark-900 { --tw-ring-offset-color: var(--bg-primary) !important; }
+.light .placeholder-gray-500::placeholder { color: #9ca3af !important; }
+/* ===== LIGHT MODE SHADOWS & DEPTH ===== */
+
+/* Glass panels: elevated card shadow */
+.light .glass-panel {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06),
+              0 4px 16px rgba(0,0,0,0.08),
+              0 12px 32px rgba(0,0,0,0.06) !important;
+  border-color: rgba(0,0,0,0.1) !important;
+}
+/* Glass cards: subtle lift */
+.light .glass-card {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07),
+              0 6px 16px rgba(0,0,0,0.06) !important;
+  border-color: rgba(0,0,0,0.1) !important;
+}
+.light .glass-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08),
+              0 10px 28px rgba(0,0,0,0.1) !important;
+  border-color: rgba(0,0,0,0.14) !important;
+}
+/* Navbar shadow */
+.light nav.glass-panel,
+.light .sticky.glass-panel {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08),
+              0 6px 20px rgba(0,0,0,0.06) !important;
+}
+/* Buttons: subtle shadow on primary buttons */
+.light .shadow-lg {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1),
+              0 8px 24px rgba(0,0,0,0.08) !important;
+}
+.light .shadow-xl {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08),
+              0 12px 28px rgba(0,0,0,0.1) !important;
+}
+.light .shadow-2xl {
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08),
+              0 16px 40px rgba(0,0,0,0.12) !important;
+}
+/* Purple accent shadows */
+.light .shadow-purple-500\/10 { box-shadow: 0 4px 16px rgba(139,92,246,0.1), 0 1px 4px rgba(0,0,0,0.06) !important; }
+.light .shadow-purple-500\/20 { box-shadow: 0 4px 20px rgba(139,92,246,0.14), 0 2px 6px rgba(0,0,0,0.06) !important; }
+.light .shadow-purple-500\/25 { box-shadow: 0 6px 24px rgba(139,92,246,0.16), 0 2px 6px rgba(0,0,0,0.06) !important; }
+.light .shadow-black\/50 { box-shadow: 0 8px 28px rgba(0,0,0,0.14) !important; }
+/* Input fields: inset shadow for depth */
+.light input,
+.light select,
+.light textarea {
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06) !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+.light input:focus,
+.light select:focus,
+.light textarea:focus {
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06),
+              0 0 0 3px rgba(139,92,246,0.15) !important;
+  border-color: rgba(139,92,246,0.4) !important;
+}
+/* Stat card hover lift */
+.light .glass-card.hover\:-translate-y-1:hover,
+.light .hover\:-translate-y-1:hover {
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08),
+              0 16px 40px rgba(0,0,0,0.1) !important;
+}
+/* Modal overlays: stronger backdrop */
+.light .backdrop-blur-sm {
+  background: rgba(241,243,249,0.8) !important;
+}
+/* Sidebar desktop panel */
+.light aside .glass-panel,
+.light aside.glass-panel {
+  box-shadow: 2px 0 12px rgba(0,0,0,0.06),
+              4px 0 20px rgba(0,0,0,0.04) !important;
+}
+/* Mobile sidebar tabs */
+.light aside button {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+/* Status/priority badges: subtle shadow */
+.light .rounded-full[class*="bg-"] {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+/* Dropdown menus */
+.light .animate-slide-down {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08),
+              0 12px 32px rgba(0,0,0,0.06) !important;
+}
+/* Scrollbar light mode */
+.light ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+.light ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); }
+.light ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+/* ===== CHATBOT LIGHT MODE FIXES ===== */
+/* Quick prompt suggestion chips */
+.light .chat-chip {
+  color: #6d28d9 !important;
+  background: rgba(139, 92, 246, 0.1) !important;
+  border-color: rgba(139, 92, 246, 0.25) !important;
+}
+.light .chat-chip:hover {
+  color: #4c1d95 !important;
+  background: rgba(139, 92, 246, 0.18) !important;
+  border-color: rgba(139, 92, 246, 0.45) !important;
+}
+.light .chat-chip:active {
+  background: rgba(139, 92, 246, 0.25) !important;
+}
+/* Send button: keep white icon on purple background */
+.light .chat-send-btn,
+.light .chat-send-btn svg {
+  color: #ffffff !important;
+}
+.light .chat-send-btn:disabled {
+  opacity: 0.4;
+}
+/* User message bubbles: keep white text on purple background */
+.light .chat-user-bubble,
+.light .chat-user-bubble * {
+  color: #ffffff !important;
+}
+.light .chat-user-bubble a {
+  color: #ffffff !important;
+}
+/* User avatar initial: keep white on gradient */
+.light .bg-gradient-to-br.from-purple-500 .text-white {
+  color: #ffffff !important;
+}
+/* Bot message text: ensure readable in light mode */
+.light .bg-dark-800.border.text-gray-200 {
+  color: #1f2937 !important;
+}
+/* Online status text: keep green */
+.light .text-green-400 {
+  color: #22c55e !important;
+}
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+/* Staggered animation delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+/* Carousel Animations */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out forwards;
+}
+.animate-slide-in-left {
+  animation: slideInLeft 0.5s ease-out forwards;
+}
