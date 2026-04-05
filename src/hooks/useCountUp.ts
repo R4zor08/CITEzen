@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function useCountUp(end: number, duration: number = 1200) {
+export function useCountUp(end: number, duration = 1200) {
   const [count, setCount] = useState(0);
   const prevEnd = useRef(end);
   const frameRef = useRef<number>();

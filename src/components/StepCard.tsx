@@ -1,10 +1,9 @@
-import React from 'react';
-import { BoxIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 interface StepCardProps {
   number: number;
   title: string;
   description: string;
-  icon: BoxIcon;
+  icon: LucideIcon;
   isLast?: boolean;
 }
 export function StepCard({

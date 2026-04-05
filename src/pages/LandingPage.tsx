@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
 import { Navbar } from '../components/Navbar';
+import { HowItWorksCarousel } from '../components/HowItWorksCarousel';
 import { FeatureCard } from '../components/FeatureCard';
 import {
   FileTextIcon,
@@ -12,8 +12,6 @@ import {
   MailIcon,
   MapPinIcon,
   PhoneIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   MessageSquareIcon,
   SendIcon,
   UserPlusIcon,
@@ -101,27 +99,9 @@ const HOW_IT_WORKS_STEPS = [
 }];
 
 export function LandingPage({ onNavigate }: LandingPageProps) {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const handleNext = useCallback(() => {
-    setCurrentStep((prev) => (prev + 1) % HOW_IT_WORKS_STEPS.length);
-  }, []);
-  const handlePrev = useCallback(() => {
-    setCurrentStep(
-      (prev) =>
-      (prev - 1 + HOW_IT_WORKS_STEPS.length) % HOW_IT_WORKS_STEPS.length
-    );
-  }, []);
-  // Auto-play carousel
-  useEffect(() => {
-    if (isPaused) return;
-    const timer = setInterval(handleNext, 4000);
-    return () => clearInterval(timer);
-  }, [isPaused, handleNext]);
-  const step = HOW_IT_WORKS_STEPS[currentStep];
   return (
     <div className="min-h-screen bg-dark-900 text-gray-200 selection:bg-purple-500/30 pt-16">
-      <Navbar user={null} onNavigate={onNavigate} onLogout={() => {}} />
+      <Navbar user={null} onNavigate={onNavigate} />
 
       <main>
         {/* ===== HERO SECTION (Static, Clean) ===== */}
@@ -210,111 +190,17 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[800px] h-[400px] sm:h-[800px] bg-purple-900/10 blur-[120px] rounded-full pointer-events-none" />
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="text-center mb-10 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">
+            <div className="text-center mb-8 sm:mb-10 md:mb-12">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4 tracking-tight">
                 How CITEzen Works
               </h2>
-              <p className="text-gray-400 max-w-2xl mx-auto text-base sm:text-lg px-2">
+              <p className="text-gray-400 max-w-2xl mx-auto text-base sm:text-lg px-2 leading-relaxed">
                 A streamlined process from registration to resolution — in just
-                6 simple steps.
+                6 simple steps. Swipe on mobile, use arrows or dots on any device.
               </p>
             </div>
 
-            {/* Carousel Container */}
-            <div
-              className="relative max-w-4xl mx-auto"
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}>
-              
-              {/* Main Carousel Card */}
-              <div className="relative min-h-[280px] sm:min-h-[260px] md:min-h-[240px]">
-                {HOW_IT_WORKS_STEPS.map((s, index) => {
-                  const StepIcon = s.icon;
-                  return (
-                    <div
-                      key={s.number}
-                      className={`absolute inset-0 transition-all duration-500 ease-in-out ${index === currentStep ? 'opacity-100 translate-x-0 scale-100 z-10' : index < currentStep ? 'opacity-0 -translate-x-12 scale-95 z-0' : 'opacity-0 translate-x-12 scale-95 z-0'}`}>
-                      
-                      <div
-                        className={`glass-panel p-6 sm:p-8 md:p-12 ${s.borderHover} transition-all duration-300 h-full`}>
-                        
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-8 md:gap-10">
-                          {/* Icon + Number */}
-                          <div className="flex flex-col items-center shrink-0">
-                            <div
-                              className={`relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl ${s.iconBg} flex items-center justify-center border border-white/10 transition-all duration-300`}>
-                              
-                              <StepIcon
-                                className={`h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 ${s.iconColor}`} />
-                              
-                              <div className="absolute -top-2.5 -right-2.5 sm:-top-3 sm:-right-3 h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center text-xs sm:text-sm font-bold text-white shadow-lg shadow-purple-500/30 border-2 border-dark-900">
-                                {s.number}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Content */}
-                          <div className="text-center sm:text-left flex-1">
-                            <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-gray-500 mb-1.5 sm:mb-2">
-                              Step {s.number} of {HOW_IT_WORKS_STEPS.length}
-                            </div>
-                            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2 sm:mb-4">
-                              {s.title}
-                            </h3>
-                            <p className="text-gray-400 text-base sm:text-lg leading-relaxed max-w-lg">
-                              {s.description}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>);
-
-                })}
-              </div>
-
-              {/* Navigation Arrows + Dots */}
-              <div className="flex items-center justify-center gap-3 sm:gap-4 mt-6 sm:mt-8">
-                <button
-                  onClick={handlePrev}
-                  className="p-2.5 sm:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white transition-all duration-300 hover:scale-110 active:scale-95"
-                  aria-label="Previous step">
-                  
-                  <ChevronLeftIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                </button>
-
-                {/* Dots Indicator */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  {HOW_IT_WORKS_STEPS.map((_, index) =>
-                  <button
-                    key={index}
-                    onClick={() => setCurrentStep(index)}
-                    className={`rounded-full transition-all duration-300 ${index === currentStep ? 'w-6 sm:w-8 h-2 sm:h-2.5 bg-purple-500' : 'w-2 sm:w-2.5 h-2 sm:h-2.5 bg-white/20 hover:bg-white/40'}`}
-                    aria-label={`Go to step ${index + 1}`} />
-
-                  )}
-                </div>
-
-                <button
-                  onClick={handleNext}
-                  className="p-2.5 sm:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white transition-all duration-300 hover:scale-110 active:scale-95"
-                  aria-label="Next step">
-                  
-                  <ChevronRightIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                </button>
-              </div>
-
-              {/* Step Progress Bar */}
-              <div className="mt-4 sm:mt-6 max-w-xs sm:max-w-md mx-auto">
-                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
-                    style={{
-                      width: `${(currentStep + 1) / HOW_IT_WORKS_STEPS.length * 100}%`
-                    }} />
-                  
-                </div>
-              </div>
-            </div>
+            <HowItWorksCarousel steps={HOW_IT_WORKS_STEPS} />
           </div>
         </section>
 
@@ -376,23 +262,23 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
         {/* ===== CONTACT SECTION ===== */}
         <section
           id="contact"
-          className="py-16 sm:py-20 lg:py-24 relative bg-dark-800/30 border-t border-white/5">
+          className="py-12 sm:py-16 lg:py-24 relative bg-dark-800/30 border-t border-white/5">
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-10 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">
+            <div className="text-center mb-8 sm:mb-12 lg:mb-16 max-w-3xl mx-auto">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4 tracking-tight">
                 Get in Touch
               </h2>
-              <p className="text-gray-400 max-w-2xl mx-auto text-base sm:text-lg px-2">
+              <p className="text-gray-400 text-base sm:text-lg px-1 leading-relaxed">
                 Have questions or need assistance? Our support team is here to
                 help.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 xl:gap-14 items-stretch">
               {/* Contact Info */}
-              <div className="space-y-4 sm:space-y-6">
-                <div className="glass-panel p-5 sm:p-6 md:p-8 flex items-start gap-3 sm:gap-4 hover:border-purple-500/30 transition-colors duration-300">
+              <div className="space-y-3 sm:space-y-5 order-2 lg:order-1">
+                <div className="glass-panel p-4 sm:p-6 md:p-7 flex items-start gap-3 sm:gap-4 rounded-2xl hover:border-purple-500/30 transition-colors duration-300">
                   <div className="p-2.5 sm:p-3 rounded-xl bg-purple-500/10 text-purple-400 shrink-0">
                     <MapPinIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
@@ -401,14 +287,14 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                       Visit Us
                     </h3>
                     <p className="text-gray-400 text-sm sm:text-base">
-                      NEMSU Campus, Main Building
+                      NEMSU Tandag Campus
                       <br />
-                      Room 101, Student Affairs Office
+                      CITE Building Office
                     </p>
                   </div>
                 </div>
 
-                <div className="glass-panel p-5 sm:p-6 md:p-8 flex items-start gap-3 sm:gap-4 hover:border-cyan-500/30 transition-colors duration-300">
+                <div className="glass-panel p-4 sm:p-6 md:p-7 flex items-start gap-3 sm:gap-4 rounded-2xl hover:border-cyan-500/30 transition-colors duration-300">
                   <div className="p-2.5 sm:p-3 rounded-xl bg-cyan-500/10 text-cyan-400 shrink-0">
                     <MailIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
@@ -417,14 +303,14 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                       Email Us
                     </h3>
                     <p className="text-gray-400 text-sm sm:text-base break-all sm:break-normal">
-                      support@citezen.nemsu.edu.ph
+                      rcllanto@.nemsu.edu.ph
                       <br />
                       admin@nemsu.edu.ph
                     </p>
                   </div>
                 </div>
 
-                <div className="glass-panel p-5 sm:p-6 md:p-8 flex items-start gap-3 sm:gap-4 hover:border-emerald-500/30 transition-colors duration-300">
+                <div className="glass-panel p-4 sm:p-6 md:p-7 flex items-start gap-3 sm:gap-4 rounded-2xl hover:border-emerald-500/30 transition-colors duration-300">
                   <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
                     <PhoneIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
@@ -433,72 +319,80 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                       Call Us
                     </h3>
                     <p className="text-gray-400 text-sm sm:text-base">
-                      (086) 123-4567
+                      (945) 347-7555
                       <br />
-                      Mon-Fri, 8:00 AM - 5:00 PM
+                      Mon-Fri, 7:30 AM - 5:00 PM
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Contact Form */}
-              <div className="glass-panel p-5 sm:p-6 md:p-8">
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2">
-                  <MessageSquareIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-400" />
+              <div className="glass-panel p-4 sm:p-6 md:p-8 rounded-2xl order-1 lg:order-2 h-full flex flex-col">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-5 sm:mb-6 flex items-center gap-2.5">
+                  <span className="flex h-10 w-10 rounded-xl bg-purple-500/15 items-center justify-center border border-purple-500/25">
+                    <MessageSquareIcon className="h-5 w-5 text-purple-400" />
+                  </span>
                   Send a Message
                 </h3>
                 <form
-                  className="space-y-4 sm:space-y-5"
+                  className="space-y-4 sm:space-y-5 flex-1 flex flex-col"
                   onSubmit={(e) => e.preventDefault()}>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                    <div className="space-y-1.5">
+                      <label className="citezen-label" htmlFor="contact-name">
                         Your Name
                       </label>
                       <input
+                        id="contact-name"
                         type="text"
-                        className="block w-full bg-dark-800/50 border border-white/10 rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all hover:bg-dark-800/80"
-                        placeholder="John Doe" />
+                        autoComplete="name"
+                        className="citezen-input"
+                        placeholder="Enter your name" />
                       
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                    <div className="space-y-1.5">
+                      <label className="citezen-label" htmlFor="contact-email">
                         Email Address
                       </label>
                       <input
+                        id="contact-email"
                         type="email"
-                        className="block w-full bg-dark-800/50 border border-white/10 rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all hover:bg-dark-800/80"
+                        autoComplete="email"
+                        className="citezen-input"
                         placeholder="john@example.com" />
                       
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  <div className="space-y-1.5">
+                    <label className="citezen-label" htmlFor="contact-subject">
                       Subject
                     </label>
                     <input
+                      id="contact-subject"
                       type="text"
-                      className="block w-full bg-dark-800/50 border border-white/10 rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all hover:bg-dark-800/80"
+                      className="citezen-input"
                       placeholder="How can we help?" />
                     
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
+                    <label className="citezen-label" htmlFor="contact-message">
                       Message
                     </label>
                     <textarea
-                      rows={4}
-                      className="block w-full bg-dark-800/50 border border-white/10 rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all resize-none hover:bg-dark-800/80"
+                      id="contact-message"
+                      rows={5}
+                      className="citezen-input citezen-textarea flex-1 min-h-[140px]"
                       placeholder="Write your message here..." />
                     
                   </div>
                   <button
                     type="button"
-                    className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm sm:text-base font-medium hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 group hover:scale-[1.02] active:scale-[0.98]">
+                    className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm sm:text-base font-semibold hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 group active:scale-[0.99] touch-manipulation">
                     
                     Send Message{' '}
-                    <SendIcon className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    <SendIcon className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 </form>
               </div>

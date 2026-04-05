@@ -1,4 +1,3 @@
-import React from 'react';
 import { ConcernStatus, Priority } from '../types';
 import {
   CheckCircle2Icon,
@@ -61,23 +60,26 @@ export function PriorityBadge({ priority, size = 'md' }: PriorityBadgeProps) {
   const config = {
     low: {
       color: 'text-gray-400',
-      bg: 'bg-gray-400/10 border-gray-400/20'
+      bg: 'bg-gray-400/10 border-gray-400/20',
+      showIcon: false
     },
     medium: {
       color: 'text-blue-400',
-      bg: 'bg-blue-400/10 border-blue-400/20'
+      bg: 'bg-blue-400/10 border-blue-400/20',
+      showIcon: false
     },
     high: {
       color: 'text-orange-400',
-      bg: 'bg-orange-400/10 border-orange-400/20'
+      bg: 'bg-orange-400/10 border-orange-400/20',
+      showIcon: false
     },
     urgent: {
       color: 'text-red-400',
       bg: 'bg-red-400/10 border-red-400/20',
-      icon: true
+      showIcon: true
     }
   };
-  const { color, bg, icon } = config[priority];
+  const { color, bg, showIcon } = config[priority];
   const sizeClasses =
   size === 'sm' ?
   'px-2 py-0.5 text-[10px] gap-1' :
@@ -86,7 +88,7 @@ export function PriorityBadge({ priority, size = 'md' }: PriorityBadgeProps) {
     <span
       className={`inline-flex items-center rounded-full border font-medium capitalize ${bg} ${color} ${sizeClasses}`}>
       
-      {icon &&
+      {showIcon &&
       <AlertTriangleIcon
         className={size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
 

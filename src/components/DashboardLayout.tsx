@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Role } from '../types';
 import { Sidebar } from './Sidebar';
@@ -14,8 +15,7 @@ interface DashboardLayoutProps {
   onLogout: () => void;
   onNavigate: (page: string) => void;
   concernsData: any;
-  onUpdateUser?: (data: Partial<User>) => Promise<void>;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 export function DashboardLayout({
   user,
@@ -25,7 +25,6 @@ export function DashboardLayout({
   onLogout,
   onNavigate,
   concernsData,
-  onUpdateUser,
   children
 }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -62,11 +61,10 @@ export function DashboardLayout({
         <Navbar
           user={user}
           onNavigate={onNavigate}
-          onLogout={() => setShowLogoutModal(true)}
           onToggleMobileSidebar={() => setIsMobileOpen(true)} />
         
 
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
           <div className="max-w-7xl mx-auto w-full">
             <AnimatePresence mode="wait">
               <motion.div
@@ -88,7 +86,7 @@ export function DashboardLayout({
                 }}>
                 
                 {activeTab === 'notifications' ?
-                <div className="max-w-3xl mx-auto">
+                <div className="w-full max-w-full px-0 sm:px-1 lg:px-2">
                     <NotificationPanel
                     notifications={concernsData.notifications}
                     onMarkRead={concernsData.markNotificationRead}

@@ -1,18 +1,15 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { User } from '../types';
 import { MenuIcon, SunIcon, MoonIcon, XIcon } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 interface NavbarProps {
   user: User | null;
   onNavigate: (page: string) => void;
-  onLogout: () => void;
   onToggleMobileSidebar?: () => void;
 }
 export function Navbar({
   user,
   onNavigate,
-  onLogout,
   onToggleMobileSidebar
 }: NavbarProps) {
   const { isDark, toggleTheme } = useTheme();

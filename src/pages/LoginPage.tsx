@@ -32,6 +32,7 @@ export function LoginPage({ onLogin, onNavigate }: LoginPageProps) {
       await onLogin(identifier, password, role);
     } catch (err: any) {
       setError(err.message || 'Invalid credentials. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };

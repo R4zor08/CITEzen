@@ -26,3 +26,5 @@ npm run dev
 Browse tables: `cd server && npx prisma studio`. See `server/README.md` for endpoints and env vars.
 
 Convenience (from repo root): `npm run server:dev` after the one-time `server` setup above.
+
+The frontend calls the API at `VITE_API_URL` (default `http://localhost:3001`). Run **both** `npm run server:dev` and `npm run dev` for full functionality.

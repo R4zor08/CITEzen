@@ -1,4 +1,3 @@
-import React from 'react';
 import { Concern } from '../types';
 import { StatusBadge, PriorityBadge } from './StatusBadge';
 import {
@@ -28,8 +27,20 @@ export function ConcernCard({
   };
   return (
     <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
-      className={`glass-card p-4 sm:p-5 group ${onClick ? 'cursor-pointer' : ''}`}>
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      className={`glass-card p-4 sm:p-5 rounded-2xl group ${onClick ? 'cursor-pointer touch-manipulation active:scale-[0.99] transition-transform hover:border-purple-500/25' : ''}`}>
       
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
         <div className="flex-1 min-w-0">
@@ -47,7 +58,7 @@ export function ConcernCard({
               {concern.subcategory}
             </span>
           </div>
-          <h3 className="text-base font-semibold text-white truncate group-hover:text-purple-300 transition-colors">
+          <h3 className="text-base sm:text-lg font-semibold text-white line-clamp-2 sm:truncate group-hover:text-purple-300 transition-colors leading-snug">
             {concern.title}
           </h3>
         </div>
@@ -83,8 +94,10 @@ export function ConcernCard({
         </div>
 
         {onClick &&
-        <div className="flex items-center text-xs font-medium text-purple-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-            View Details <ChevronRightIcon className="h-3.5 w-3.5 ml-0.5" />
+        <div className="flex items-center text-xs font-medium text-purple-400 sm:opacity-0 sm:-translate-x-2 sm:group-hover:opacity-100 sm:group-hover:translate-x-0 transition-all duration-300">
+            <span className="sm:hidden">Open</span>
+            <span className="hidden sm:inline">View Details</span>
+            <ChevronRightIcon className="h-3.5 w-3.5 ml-0.5 shrink-0" />
           </div>
         }
       </div>

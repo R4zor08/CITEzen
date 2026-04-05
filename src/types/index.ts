@@ -16,6 +16,9 @@ export interface User {
   course?: string;
   department?: string;
   profilePicture?: string;
+  /** Present when user is loaded from the API */
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Comment {

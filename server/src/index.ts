@@ -21,7 +21,8 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
 app.use(cors({ origin: process.env.CORS_ORIGIN ?? true }));
-app.use(express.json());
+// Default 100kb is too small for profile avatars stored as base64 data URLs
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? '15mb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'citezen-api' });
@@ -146,17 +147,38 @@ app.patch('/api/users/:id', async (req, res) => {
       department: string;
       course: string;
       profilePicture: string;
+      role: string;
+      studentId: string | null;
+      password: string;
     }>;
+
+    const data: Prisma.UserUpdateInput = {};
+    if (updates.name !== undefined) data.name = updates.name;
+    if (updates.email !== undefined) data.email = updates.email;
+    if (updates.department !== undefined) data.department = updates.department;
+    if (updates.course !== undefined) data.course = updates.course;
+    if (updates.profilePicture !== undefined) {
+      data.profilePicture = updates.profilePicture;
+    }
+    if (updates.role !== undefined) {
+      data.role = updates.role;
+      if (updates.role !== 'student') {
+        data.studentId = null;
+      }
+    }
+    if (updates.studentId !== undefined) {
+      data.studentId =
+        updates.studentId && String(updates.studentId).trim()
+          ? String(updates.studentId).trim()
+          : null;
+    }
+    if (updates.password && updates.password.length >= 6) {
+      data.passwordHash = await bcrypt.hash(updates.password, 10);
+    }
 
     const user = await prisma.user.update({
       where: { id },
-      data: {
-        ...(updates.name !== undefined && { name: updates.name }),
-        ...(updates.email !== undefined && { email: updates.email }),
-        ...(updates.department !== undefined && { department: updates.department }),
-        ...(updates.course !== undefined && { course: updates.course }),
-        ...(updates.profilePicture !== undefined && { profilePicture: updates.profilePicture })
-      }
+      data
     });
     res.json(userToApi(user));
   } catch (e) {

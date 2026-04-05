@@ -1,4 +1,4 @@
-import React, { useState, Children } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, ConcernStatus } from '../types';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -98,8 +98,7 @@ export function StaffDashboard({
       onTabChange={setActiveTab}
       onLogout={onLogout}
       onNavigate={onNavigate}
-      concernsData={concernsData}
-      onUpdateUser={onUpdateUser}>
+      concernsData={concernsData}>
       
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' &&
@@ -295,31 +294,41 @@ export function StaffDashboard({
         </motion.div>
       }
 
-      {/* Concern Detail Modal */}
-      {selectedConcern &&
       <ConcernDetail
+        isOpen={Boolean(selectedConcern)}
         concern={selectedConcern}
         currentUser={user}
-        onUpdateStatus={(id, status) => {
-          updateStatus(id, status);
-          const labels: Record<string, string> = {
-            'in-progress': 'In Progress',
-            resolved: 'Resolved',
-            rejected: 'Rejected'
-          };
-          toast.success(`Status updated to ${labels[status] || status}`);
+        onUpdateStatus={async (id, status) => {
+          try {
+            await updateStatus(id, status);
+            const labels: Record<string, string> = {
+              'in-progress': 'In Progress',
+              resolved: 'Resolved',
+              rejected: 'Rejected'
+            };
+            toast.success(`Status updated to ${labels[status] || status}`);
+          } catch {
+            /* useConcerns already toasts */
+          }
         }}
-        onForward={(id, dept) => {
-          forwardConcern(id, dept);
-          toast.success(`Concern forwarded to ${dept}`);
+        onForward={async (id, dept) => {
+          try {
+            await forwardConcern(id, dept);
+            toast.success(`Concern forwarded to ${dept}`);
+          } catch {
+            /* useConcerns already toasts */
+          }
         }}
-        onAddComment={(id, content, author) => {
-          addComment(id, content, author);
-          toast.success('Comment added');
+        onAddComment={async (id, content, author) => {
+          try {
+            await addComment(id, content, author);
+            toast.success('Comment added');
+          } catch {
+            /* useConcerns already toasts */
+          }
         }}
-        onClose={() => setSelectedConcernId(null)} />
-
-      }
+        onClose={() => setSelectedConcernId(null)}
+      />
     </DashboardLayout>);
 
 }
