@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { User } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useThemeProvider, ThemeContext } from './hooks/useTheme';
 import { useConcerns } from './hooks/useConcerns';
@@ -60,6 +61,9 @@ export function App() {
     logout();
     handleNavigate('landing');
   };
+  const handleUpdateUser = async (data: Partial<User>) => {
+    await updateUser(data);
+  };
   if (isLoading) {
     return (
       <div className="min-h-screen bg-dark-900 flex flex-col items-center justify-center text-white">
@@ -82,14 +86,22 @@ export function App() {
     <ThemeContext.Provider value={themeValue}>
       <div className="min-h-screen bg-dark-900 text-gray-200 font-sans selection:bg-purple-500/30">
         <Toaster
-          theme="dark"
-          position="top-right"
+          theme={themeValue.isDark ? 'dark' : 'light'}
+          position="top-center"
           toastOptions={{
-            style: {
-              background: '#1a1a2e',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#e5e7eb'
-            }
+            style: themeValue.isDark
+              ? {
+                  background: '#1a1a2e',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#e5e7eb'
+                }
+              : {
+                  background: '#ffffff',
+                  border: '1px solid rgba(0,0,0,0.1)',
+                  color: '#0f172a',
+                  boxShadow:
+                    '0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px rgba(0,0,0,0.08)'
+                }
           }} />
         
         {currentPage === 'landing' &&
@@ -110,7 +122,7 @@ export function App() {
           onLogout={handleLogout}
           onNavigate={handleNavigate}
           concernsData={concernsData}
-          onUpdateUser={updateUser} />
+          onUpdateUser={handleUpdateUser} />
 
         }
 
@@ -120,7 +132,7 @@ export function App() {
           onLogout={handleLogout}
           onNavigate={handleNavigate}
           concernsData={concernsData}
-          onUpdateUser={updateUser} />
+          onUpdateUser={handleUpdateUser} />
 
         }
 
@@ -130,7 +142,7 @@ export function App() {
           onLogout={handleLogout}
           onNavigate={handleNavigate}
           concernsData={concernsData}
-          onUpdateUser={updateUser} />
+          onUpdateUser={handleUpdateUser} />
 
         }
       </div>

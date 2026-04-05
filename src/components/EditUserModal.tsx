@@ -20,9 +20,8 @@ interface EditUserModalProps {
   updates: Partial<
     User & {
       password?: string;
-    }>)
-
-  => void;
+    }>
+  ) => void | Promise<void>;
 }
 export function EditUserModal({
   isOpen,
@@ -96,7 +95,7 @@ export function EditUserModal({
         } :
         {})
       };
-      onSave(user.id, updates);
+      await onSave(user.id, updates);
       toast.success(`User "${formData.name}" updated successfully`);
       onClose();
     } catch {

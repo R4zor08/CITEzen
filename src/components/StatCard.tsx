@@ -1,11 +1,11 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUpIcon, TrendingDownIcon, BoxIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { TrendingUpIcon, TrendingDownIcon } from 'lucide-react';
 import { useCountUp } from '../hooks/useCountUp';
 interface StatCardProps {
   title: string;
   value: string | number;
-  icon: BoxIcon;
+  icon: LucideIcon;
   color: 'purple' | 'blue' | 'green' | 'orange' | 'red';
   trend?: {
     value: number;

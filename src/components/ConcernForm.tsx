@@ -81,17 +81,19 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
     (t) => t.category === selectedCategory
   );
   return (
-    <div className="glass-panel p-6 sm:p-8 animate-fade-in max-w-3xl mx-auto">
+    <div className="glass-panel p-4 sm:p-6 md:p-8 lg:p-10 animate-fade-in max-w-3xl mx-auto w-full rounded-2xl">
       {/* Progress Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-white">Submit a Concern</h2>
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 className="text-lg sm:text-xl font-bold text-white">
+            Submit a Concern
+          </h2>
           <div className="text-sm font-medium text-gray-400">
             Step {step} of 3
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <div
             className={`h-1.5 flex-1 rounded-full ${step >= 1 ? 'bg-purple-500' : 'bg-white/10'}`} />
           
@@ -110,22 +112,25 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
           <h3 className="text-lg font-medium text-white mb-4">
             What type of concern do you have?
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {categories.map((cat) => {
             const Icon = iconMap[cat.icon] || AlertCircleIcon;
             return (
               <button
                 key={cat.id}
+                type="button"
                 onClick={() => handleCategorySelect(cat.id)}
-                className="flex flex-col items-start p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-purple-500/50 transition-all text-left group">
+                className="flex flex-col items-start p-4 sm:p-5 min-h-[120px] sm:min-h-0 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-purple-500/50 transition-all text-left group touch-manipulation active:scale-[0.99]">
                 
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 text-purple-400 mb-4 group-hover:scale-110 transition-transform">
-                    <Icon className="h-6 w-6" />
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 text-purple-400 mb-3 sm:mb-4 group-hover:scale-105 transition-transform">
+                    <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
                   </div>
-                  <h4 className="text-base font-semibold text-white mb-1">
+                  <h4 className="text-base font-semibold text-white mb-1 leading-snug">
                     {cat.id}
                   </h4>
-                  <p className="text-sm text-gray-400">{cat.description}</p>
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    {cat.description}
+                  </p>
                 </button>);
 
           })}
@@ -147,23 +152,26 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
             Select a specific template
           </h3>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             {availableTemplates.map((template) =>
           <button
             key={template.id}
+            type="button"
             onClick={() => handleTemplateSelect(template)}
-            className="w-full flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-purple-500/50 transition-all text-left group">
+            className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-purple-500/50 transition-all text-left group touch-manipulation min-h-[44px] active:scale-[0.99]">
             
-                <div>
-                  <h4 className="text-base font-medium text-white mb-1 group-hover:text-purple-300 transition-colors">
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-base font-medium text-white mb-1 group-hover:text-purple-300 transition-colors leading-snug">
                     {template.title}
                   </h4>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-gray-400 leading-relaxed">
                     {template.description}
                   </p>
                 </div>
-                <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-cyan-400 bg-cyan-400/10 px-2.5 py-1 rounded-full border border-cyan-400/20">
-                  Routes to: {template.routeTo}
+                <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-cyan-400 bg-cyan-400/10 px-2.5 py-1.5 rounded-full border border-cyan-400/20 self-start sm:self-center">
+                  <span className="hidden sm:inline">Routes to:</span>
+                  <span className="sm:hidden">→</span>{' '}
+                  {template.routeTo}
                 </div>
               </button>
           )}
@@ -201,16 +209,16 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
             {/* Auto-filled Student Info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
+                <span className="citezen-label text-xs !text-gray-500">
                   Student Name
-                </label>
-                <div className="text-sm text-gray-300">{user.name}</div>
+                </span>
+                <div className="text-sm text-gray-300 py-1">{user.name}</div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
+                <span className="citezen-label text-xs !text-gray-500">
                   Student ID
-                </label>
-                <div className="text-sm text-gray-300">
+                </span>
+                <div className="text-sm text-gray-300 py-1">
                   {user.studentId || 'N/A'}
                 </div>
               </div>
@@ -218,31 +226,33 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
 
             {/* Title & Description (Always present) */}
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <div className="space-y-1.5">
+                <label className="citezen-label" htmlFor="concern-title">
                   Concern Title <span className="text-red-400">*</span>
                 </label>
                 <input
+                id="concern-title"
                 type="text"
                 name="title"
                 value={formData.title || ''}
                 onChange={handleInputChange}
                 required
-                className="w-full bg-dark-800 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all" />
+                className="citezen-input" />
               
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <div className="space-y-1.5">
+                <label className="citezen-label" htmlFor="concern-desc">
                   General Description <span className="text-red-400">*</span>
                 </label>
                 <textarea
+                id="concern-desc"
                 name="description"
                 value={formData.description || ''}
                 onChange={handleInputChange}
                 required
-                rows={3}
-                className="w-full bg-dark-800 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all resize-none"
+                rows={4}
+                className="citezen-input citezen-textarea"
                 placeholder="Provide a brief overview of your concern..." />
               
               </div>
@@ -252,44 +262,47 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
 
             {/* Dynamic Fields from Template */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-2">
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-1">
                 Specific Details
               </h4>
 
               {selectedTemplate.fields.map((field) =>
-            <div key={field.name}>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">
+            <div key={field.name} className="space-y-1.5">
+                  <label className="citezen-label" htmlFor={`field-${field.name}`}>
                     {field.label}{' '}
                     {field.required && <span className="text-red-400">*</span>}
                   </label>
 
                   {field.type === 'text' || field.type === 'date' ?
               <input
+                id={`field-${field.name}`}
                 type={field.type}
                 name={field.name}
                 value={formData[field.name] || ''}
                 onChange={handleInputChange}
                 required={field.required}
                 placeholder={field.placeholder}
-                className="w-full bg-dark-800 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all" /> :
+                className="citezen-input" /> :
 
               field.type === 'textarea' ?
               <textarea
+                id={`field-${field.name}`}
                 name={field.name}
                 value={formData[field.name] || ''}
                 onChange={handleInputChange}
                 required={field.required}
                 placeholder={field.placeholder}
                 rows={4}
-                className="w-full bg-dark-800 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all resize-none" /> :
+                className="citezen-input citezen-textarea" /> :
 
               field.type === 'select' ?
               <select
+                id={`field-${field.name}`}
                 name={field.name}
                 value={formData[field.name] || ''}
                 onChange={handleInputChange}
                 required={field.required}
-                className="w-full bg-dark-800 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all appearance-none">
+                className="citezen-input appearance-none bg-[var(--bg-secondary)]">
                 
                       <option value="" disabled>
                         Select an option
@@ -332,7 +345,7 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
                 key={p}
                 type="button"
                 onClick={() => setPriority(p)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium capitalize border transition-all ${priority === p ? p === 'urgent' ? 'bg-red-500/20 border-red-500/50 text-red-400' : p === 'high' ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' : p === 'medium' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-gray-500/20 border-gray-500/50 text-gray-300' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}>
+                className={`min-h-[48px] sm:min-h-[44px] px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium capitalize border transition-all touch-manipulation ${priority === p ? p === 'urgent' ? 'bg-red-500/20 border-red-500/50 text-red-400' : p === 'high' ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' : p === 'medium' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-gray-500/20 border-gray-500/50 text-gray-300' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}>
                 
                     {p}
                   </button>
@@ -341,18 +354,18 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-6 border-t border-white/10 mt-8">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-6 border-t border-white/10 mt-6 sm:mt-8">
               <button
               type="button"
               onClick={onCancel}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-center border border-white/10 sm:border-transparent">
+              className="min-h-[48px] sm:min-h-0 px-5 py-3 sm:py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-center border border-white/10 sm:border-transparent touch-manipulation">
               
                 Cancel
               </button>
               <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 hover:from-purple-500 hover:to-indigo-500 transition-all hover:scale-105 active:scale-95 disabled:opacity-70 disabled:hover:scale-100">
+              className="min-h-[48px] sm:min-h-0 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 sm:py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:from-purple-500 hover:to-indigo-500 transition-all active:scale-[0.99] disabled:opacity-70 touch-manipulation">
               
                 {isSubmitting ?
               <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> :

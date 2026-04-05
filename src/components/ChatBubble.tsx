@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef, Children } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '../types';
 import { toast } from 'sonner';
@@ -6,26 +6,21 @@ import {
   MessageCircleIcon,
   XIcon,
   SendIcon,
-  BotIcon,
   UserIcon,
   Loader2Icon,
   Trash2Icon,
   PaperclipIcon,
   FileTextIcon,
   FileIcon,
-  ImageIcon,
   DownloadIcon,
   UploadCloudIcon,
   FileSpreadsheetIcon,
   ChevronLeftIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   PlusIcon,
   PencilIcon,
   SearchIcon,
-  ClockIcon,
-  AlertTriangleIcon,
-  CheckIcon } from
+  AlertTriangleIcon } from
 'lucide-react';
 interface Attachment {
   type: 'image' | 'file';
@@ -393,9 +388,13 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual. You can understand and re
       const decoder = new TextDecoder();
       let fullContent = '';
       if (!reader) throw new Error('No response body');
-      while (true) {
+      let streamDone = false;
+      while (!streamDone) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          streamDone = true;
+          break;
+        }
         const chunk = decoder.decode(value, {
           stream: true
         });

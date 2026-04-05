@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "npx vite",
+    "server:dev": "npm run dev --prefix server",
+    "server:db": "npm run db:push --prefix server && npm run db:seed --prefix server",
     "build": "npx vite build",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "preview": "npx vite preview"

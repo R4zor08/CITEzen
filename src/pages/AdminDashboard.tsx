@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Children } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, ConcernStatus } from '../types';
 import { departmentsList } from '../data/mockData';
@@ -20,6 +20,7 @@ import {
   BuildingIcon } from
 'lucide-react';
 import { toast } from 'sonner';
+import { apiJson } from '../lib/api';
 interface AdminDashboardProps {
   user: User;
   onLogout: () => void;
@@ -41,15 +42,22 @@ export function AdminDashboard({
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [filterStatus, setFilterStatus] = useState<ConcernStatus | 'all'>('all');
-  // Real-time users from localStorage (syncs with registration)
-  const [registeredUsers, setRegisteredUsers] = useState<User[]>(() => {
+  const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
+
+  const fetchUsers = useCallback(async () => {
     try {
-      const stored = localStorage.getItem('citezen_registered_users');
-      return stored ? JSON.parse(stored) : [];
+      const list = await apiJson<User[]>('/api/users');
+      setRegisteredUsers(list);
     } catch {
-      return [];
+      /* keep list; errors are rare for admin */
     }
-  });
+  }, []);
+
+  useEffect(() => {
+    void fetchUsers();
+    const id = setInterval(() => void fetchUsers(), 2500);
+    return () => clearInterval(id);
+  }, [fetchUsers]);
   // Real-time departments from localStorage
   const [localDepartments, setLocalDepartments] = useState<string[]>(() => {
     try {
@@ -59,18 +67,9 @@ export function AdminDashboard({
       return departmentsList;
     }
   });
-  // Poll localStorage for new users and department changes (simulates real-time)
   useEffect(() => {
     const interval = setInterval(() => {
       try {
-        const storedUsers = localStorage.getItem('citezen_registered_users');
-        if (storedUsers) {
-          const parsed = JSON.parse(storedUsers);
-          setRegisteredUsers((prev: User[]) => {
-            if (prev.length !== parsed.length) return parsed;
-            return prev;
-          });
-        }
         const storedDepts = localStorage.getItem('citezen_departments');
         if (storedDepts) {
           const parsed = JSON.parse(storedDepts);
@@ -79,7 +78,9 @@ export function AdminDashboard({
             return prev;
           });
         }
-      } catch {}
+      } catch {
+        /* ignore corrupt localStorage */
+      }
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -223,8 +224,7 @@ export function AdminDashboard({
       onTabChange={setActiveTab}
       onLogout={onLogout}
       onNavigate={onNavigate}
-      concernsData={concernsData}
-      onUpdateUser={onUpdateUser}>
+      concernsData={concernsData}>
       
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' &&
@@ -719,31 +719,41 @@ export function AdminDashboard({
 
       }
 
-      {/* Concern Detail Modal */}
-      {selectedConcern &&
       <ConcernDetail
+        isOpen={Boolean(selectedConcern)}
         concern={selectedConcern}
         currentUser={user}
-        onUpdateStatus={(id, status) => {
-          updateStatus(id, status);
-          const labels: Record<string, string> = {
-            'in-progress': 'In Progress',
-            resolved: 'Resolved',
-            rejected: 'Rejected'
-          };
-          toast.success(`Status updated to ${labels[status] || status}`);
+        onUpdateStatus={async (id, status) => {
+          try {
+            await updateStatus(id, status);
+            const labels: Record<string, string> = {
+              'in-progress': 'In Progress',
+              resolved: 'Resolved',
+              rejected: 'Rejected'
+            };
+            toast.success(`Status updated to ${labels[status] || status}`);
+          } catch {
+            /* useConcerns already toasts */
+          }
         }}
-        onForward={(id, dept) => {
-          forwardConcern(id, dept);
-          toast.success(`Concern forwarded to ${dept}`);
+        onForward={async (id, dept) => {
+          try {
+            await forwardConcern(id, dept);
+            toast.success(`Concern forwarded to ${dept}`);
+          } catch {
+            /* useConcerns already toasts */
+          }
         }}
-        onAddComment={(id, content, author) => {
-          addComment(id, content, author);
-          toast.success('Comment added');
+        onAddComment={async (id, content, author) => {
+          try {
+            await addComment(id, content, author);
+            toast.success('Comment added');
+          } catch {
+            /* useConcerns already toasts */
+          }
         }}
-        onClose={() => setSelectedConcernId(null)} />
-
-      }
+        onClose={() => setSelectedConcernId(null)}
+      />
 
       <AddDepartmentModal
         isOpen={showAddDeptModal}
@@ -758,26 +768,15 @@ export function AdminDashboard({
         isOpen={!!editingUser}
         user={editingUser}
         onClose={() => setEditingUser(null)}
-        onSave={(userId, updates) => {
-          try {
-            const storedStr = localStorage.getItem('citezen_registered_users');
-            if (storedStr) {
-              const users = JSON.parse(storedStr);
-              const updated = users.map((u: any) =>
-              u.id === userId ?
-              {
-                ...u,
-                ...updates
-              } :
-              u
-              );
-              localStorage.setItem(
-                'citezen_registered_users',
-                JSON.stringify(updated)
-              );
-              setRegisteredUsers(updated);
-            }
-          } catch {}
+        onSave={async (userId, updates) => {
+          const { password, ...rest } = updates;
+          const body: Record<string, unknown> = { ...rest };
+          if (password) body.password = password;
+          await apiJson(`/api/users/${userId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(body)
+          });
+          await fetchUsers();
         }} />
       
     </DashboardLayout>);

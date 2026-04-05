@@ -81,6 +81,7 @@ export function RegisterPage({ onRegister, onNavigate }: RegisterPageProps) {
       }, 2000);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
