@@ -1,5 +1,5 @@
-import './loadEnv.js';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from './lib/prisma.js';
@@ -11,23 +11,32 @@ import {
   userToApi
 } from './mappers.js';
 import type { Prisma } from '@prisma/client';
-import { registerGabaiRoutes } from './gabaiChat.js';
 
 type Role = 'student' | 'staff' | 'admin';
 type Priority = 'low' | 'medium' | 'high' | 'urgent';
 
+dotenv.config();
+
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-app.use(cors({ origin: process.env.CORS_ORIGIN ?? true }));
+/** Comma-separated origins in CORS_ORIGIN, or omit / leave empty to allow any origin (dev default). */
+function corsOriginOption(): boolean | string | string[] {
+  const raw = process.env.CORS_ORIGIN?.trim();
+  if (!raw) return true;
+  const list = raw.split(',').map((o) => o.trim()).filter(Boolean);
+  if (list.length === 0) return true;
+  if (list.length === 1) return list[0];
+  return list;
+}
+
+app.use(cors({ origin: corsOriginOption() }));
 // Default 100kb is too small for profile avatars stored as base64 data URLs
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? '15mb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'citezen-api' });
 });
-
-registerGabaiRoutes(app);
 
 /** Login: students use Student ID; staff/admin use email */
 app.post('/api/auth/login', async (req, res) => {
@@ -467,17 +476,6 @@ app.post('/api/notifications/mark-all-read', async (req, res) => {
   }
 });
 
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`citezen API listening on http://localhost:${PORT}`);
-});
-
-server.on('error', (err: NodeJS.ErrnoException) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(
-      `[citezen-api] Port ${PORT} is already in use. Close the other terminal running the API, or run: netstat -ano | findstr :${PORT} then taskkill /PID <pid> /F. Or set PORT in server/.env to a free port.`
-    );
-  } else {
-    console.error('[citezen-api] Server failed to start:', err.message);
-  }
-  process.exit(1);
 });

@@ -21,6 +21,37 @@ import {
 'lucide-react';
 import { toast } from 'sonner';
 import { apiJson } from '../lib/api';
+
+function UserListAvatar({
+  name,
+  profilePicture,
+  className
+}: {
+  name: string;
+  profilePicture?: string | null;
+  /** Tailwind size + typography classes, e.g. h-9 w-9 text-sm */
+  className: string;
+}) {
+  const initial = name.trim().charAt(0) || '?';
+  if (profilePicture) {
+    return (
+      <img
+        src={profilePicture}
+        alt=""
+        className={`rounded-full object-cover ${className}`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold ${className}`}
+      aria-hidden
+    >
+      {initial}
+    </div>
+  );
+}
+
 interface AdminDashboardProps {
   user: User;
   onLogout: () => void;
@@ -421,9 +452,11 @@ export function AdminDashboard({
             className="glass-card p-4">
             
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="h-9 w-9 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold text-sm shrink-0">
-                        {u.name.charAt(0)}
-                      </div>
+                      <UserListAvatar
+                        name={u.name}
+                        profilePicture={u.profilePicture}
+                        className="h-9 w-9 text-sm shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-white text-sm truncate">
                           {u.name}
@@ -499,9 +532,11 @@ export function AdminDashboard({
                   
                           <td className="px-4 sm:px-6 py-3 sm:py-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">
-                                {u.name.charAt(0)}
-                              </div>
+                              <UserListAvatar
+                                name={u.name}
+                                profilePicture={u.profilePicture}
+                                className="h-8 w-8 shrink-0"
+                              />
                               <div>
                                 <div className="font-medium text-white">
                                   {u.name}

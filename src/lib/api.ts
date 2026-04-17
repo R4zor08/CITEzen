@@ -1,7 +1,14 @@
 /** Base URL for the CITEzen API (no trailing slash). */
 export function getApiBase(): string {
-  const raw = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
-  return raw.replace(/\/$/, '');
+  const raw = import.meta.env.VITE_API_URL;
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    return raw.replace(/\/$/, '');
+  }
+  // Dev: same-origin `/api` so Vite can proxy to the backend (one ngrok tunnel is enough).
+  if (import.meta.env.DEV) {
+    return '';
+  }
+  return 'http://localhost:3001'.replace(/\/$/, '');
 }
 
 export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {

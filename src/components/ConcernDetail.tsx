@@ -1,14 +1,8 @@
-import React, {
-  useState,
-  Fragment,
-  useEffect,
-  useCallback,
-  useRef
-} from 'react';
+import React, { useState, Fragment, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { Concern, User, ConcernStatus, Role } from '../types';
+import { Concern, User, ConcernStatus } from '../types';
 import { StatusBadge, PriorityBadge } from './StatusBadge';
 import { departmentsList } from '../data/mockData';
 import {
@@ -23,9 +17,7 @@ import {
   CheckCircle2Icon,
   XCircleIcon,
   AlertCircleIcon,
-  ArrowLeftIcon,
-  CopyIcon,
-  CheckIcon } from
+  ArrowLeftIcon } from
 'lucide-react';
 interface ConcernDetailProps {
   isOpen: boolean;
@@ -50,10 +42,6 @@ export function ConcernDetail({
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const isStaffOrAdmin =
   currentUser.role === 'staff' || currentUser.role === 'admin';
-
-  const reduceMotion = useReducedMotion();
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const [idCopied, setIdCopied] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -87,14 +75,6 @@ export function ConcernDetail({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, handleEscape]);
 
-  useEffect(() => {
-    if (!isOpen || !concern) return;
-    const id = window.requestAnimationFrame(() => {
-      closeBtnRef.current?.focus();
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [isOpen, concern?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- focus when id changes; `concern` object identity may churn from parent
-
   const forwardTargets = concern
     ? departmentsList.filter((d) => d !== concern.department)
     : [];
@@ -115,36 +95,6 @@ export function ConcernDetail({
       minute: '2-digit'
     }).format(new Date(dateString));
   };
-
-  const shortenConcernId = (id: string) =>
-  id.length > 18 ? `${id.slice(0, 8)}…${id.slice(-6)}` : id;
-
-  const copyConcernId = async () => {
-    if (!concern) return;
-    try {
-      await navigator.clipboard.writeText(concern.id);
-      setIdCopied(true);
-      window.setTimeout(() => setIdCopied(false), 2000);
-    } catch {
-      setIdCopied(false);
-    }
-  };
-
-  const rolePillClass = (role: Role) => {
-    if (role === 'admin') {
-      return 'text-violet-200 bg-violet-500/15 border-violet-400/25';
-    }
-    if (role === 'staff') {
-      return 'text-sky-200 bg-sky-500/12 border-sky-400/25';
-    }
-    return 'text-emerald-200/90 bg-emerald-500/10 border-emerald-400/20';
-  };
-
-  const modalEnterScale = reduceMotion || !isMdLayout ? 1 : 0.97;
-  const modalTransition = reduceMotion ?
-  { duration: 0.01 } :
-  { duration: 0.28, ease: [0.34, 1.02, 0.32, 1] as const };
-
   return createPortal(
     <AnimatePresence mode="wait">
       {isOpen && concern ?
@@ -154,11 +104,7 @@ export function ConcernDetail({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={
-            reduceMotion ?
-            { duration: 0.01 } :
-            { duration: 0.22, ease: [0.4, 0, 0.2, 1] as const }
-          }>
+          transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}>
           <motion.button
             type="button"
             aria-label="Close concern details"
@@ -166,7 +112,7 @@ export function ConcernDetail({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={reduceMotion ? { duration: 0.01 } : { duration: 0.2 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
           />
 
@@ -174,43 +120,27 @@ export function ConcernDetail({
             role="dialog"
             aria-modal="true"
             aria-labelledby="concern-detail-title"
-            aria-describedby="concern-detail-description"
-            className="relative z-10 glass-panel citezen-concern-modal-shell pointer-events-auto flex flex-col w-full h-full min-h-0 max-h-[100dvh] md:h-auto md:max-h-[min(92vh,920px)] md:w-[min(80vw,1200px)] md:max-w-[80vw] rounded-none md:rounded-2xl overflow-hidden border border-white/10 pt-[max(0.5rem,env(safe-area-inset-top))] md:pt-0 pb-[env(safe-area-inset-bottom)] isolate"
-            initial={{ opacity: 0, scale: modalEnterScale }}
+            className="relative z-10 glass-panel pointer-events-auto flex flex-col w-full h-full min-h-0 max-h-[100dvh] md:h-auto md:max-h-[min(92vh,920px)] md:w-[min(80vw,1200px)] md:max-w-[80vw] rounded-none md:rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/10 pt-[max(0.5rem,env(safe-area-inset-top))] md:pt-0 pb-[env(safe-area-inset-bottom)] isolate"
+            initial={{ opacity: 0, scale: isMdLayout ? 0.96 : 1 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: modalEnterScale }}
-            transition={modalTransition}
+            exit={{ opacity: 0, scale: isMdLayout ? 0.96 : 1 }}
+            transition={{ duration: 0.28, ease: [0.34, 1.02, 0.32, 1] }}
             onClick={(e) => e.stopPropagation()}>
-        <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between px-3 py-3 sm:px-5 sm:py-4 border-b border-white/10 bg-gradient-to-b from-white/[0.07] to-transparent shrink-0">
-          <div className="flex flex-col gap-2.5 min-w-0 flex-1">
-            <div className="citezen-detail-label">Reference</div>
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <div
-                className="flex items-center gap-1 min-w-0 max-w-full rounded-lg border border-white/10 bg-dark-800/90 px-2 py-1.5 sm:px-2.5 sm:py-2"
-                title={concern.id}>
-                <code className="text-[11px] sm:text-sm font-mono text-gray-200 truncate">
-                  {shortenConcernId(concern.id)}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => void copyConcernId()}
-                  aria-label={idCopied ? 'Copied concern ID' : 'Copy full concern ID'}
-                  className="shrink-0 min-h-[44px] min-w-[44px] sm:min-h-9 sm:min-w-9 inline-flex items-center justify-center rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors touch-manipulation border border-transparent hover:border-white/10">
-                  {idCopied ?
-                  <CheckIcon className="h-4 w-4 text-emerald-400" /> :
-
-                  <CopyIcon className="h-4 w-4" />
-                  }
-                </button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={concern.status} />
-                <PriorityBadge priority={concern.priority} />
-              </div>
+        {/* Header — stacks on mobile for readability */}
+        <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between px-3 py-2.5 sm:p-5 border-b border-white/10 bg-white/5 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 min-w-0">
+            <span
+              className="text-[10px] sm:text-sm font-mono text-gray-400 bg-dark-800 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-md sm:rounded-lg border border-white/10 truncate max-w-[min(100%,11rem)] sm:max-w-full"
+              title={concern.id}>
+              {concern.id}
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={concern.status} />
+              <PriorityBadge priority={concern.priority} />
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 md:justify-end md:pt-5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {isStaffOrAdmin &&
             <>
                 <div className="relative">
@@ -273,37 +203,36 @@ export function ConcernDetail({
             <div className="hidden sm:block h-6 w-px bg-white/10 mx-1" />
 
             <button
-              ref={closeBtnRef}
               type="button"
               onClick={onClose}
               aria-label="Close concern details"
-              className="min-h-[44px] min-w-[44px] sm:min-h-10 sm:min-w-10 p-2.5 sm:p-2 rounded-xl sm:rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors touch-manipulation ml-auto md:ml-0 ring-offset-2 ring-offset-[var(--bg-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500">
+              className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 p-2.5 sm:p-2 rounded-xl sm:rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors touch-manipulation ml-auto sm:ml-0">
               
               <XIcon className="h-5 w-5" />
             </button>
           </div>
-        </header>
+        </div>
 
-        {/* Content: mobile stacked flex; desktop two columns */}
-        <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden md:divide-x divide-white/10">
-          <div className="max-md:flex-[1.12] max-md:min-h-0 max-md:overflow-y-auto md:flex-[1.05] md:min-w-0 md:min-h-0 overflow-y-auto overscroll-contain px-3 py-3 sm:px-6 md:px-8 md:py-6 custom-scrollbar space-y-4 sm:space-y-6 border-b border-white/10 md:border-b-0">
+        {/* Content Area — mobile: stacked + scroll; md+: two equal columns */}
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row md:gap-0 overflow-hidden divide-y md:divide-y-0 md:divide-x divide-white/10">
+          {/* Left Column: Details — mobile: capped height + scroll; md+: flexible */}
+          <div className="min-h-0 shrink-0 max-md:max-h-[min(46svh,320px)] md:flex-1 md:min-h-0 md:shrink overflow-y-auto overscroll-contain px-3 py-3 sm:p-6 md:p-7 custom-scrollbar space-y-3 sm:space-y-6">
             <div>
-              <p className="citezen-detail-label mb-1.5">Category</p>
-              <p className="text-xs sm:text-sm text-gray-400 mb-2 sm:mb-3 line-clamp-2">
+              <p className="text-[11px] sm:text-xs text-gray-500 mb-1 sm:mb-2 line-clamp-2">
                 {concern.category} • {concern.subcategory}
               </p>
               <h2
                 id="concern-detail-title"
-                className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight mb-3 sm:mb-5 leading-[1.2]">
+                className="text-lg sm:text-2xl font-bold text-white mb-2 sm:mb-4 leading-snug pr-1">
                 {concern.title}
               </h2>
 
               {/* Status Timeline */}
-              <div className="mb-4 sm:mb-6 rounded-xl border border-white/10 bg-dark-800/60 p-3 sm:p-5">
-                <h4 className="citezen-detail-label mb-3 sm:mb-4">
+              <div className="mb-4 sm:mb-6 bg-dark-800 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-white/5">
+                <h4 className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 sm:mb-3">
                   Progress
                 </h4>
-                <div className="flex items-center justify-between gap-0.5 sm:gap-3 max-w-xl md:max-w-none">
+                <div className="flex items-center gap-0.5 sm:gap-2">
                   {(['pending', 'in-progress', 'resolved'] as const).map(
                     (step, i) => {
                       const statusOrder = {
@@ -326,33 +255,28 @@ export function ConcernDetail({
                         'in-progress': 'In Progress',
                         resolved: 'Resolved'
                       };
-                      const isUpcoming = !isCompleted && !isCurrent && !isRejected;
-                      const circleClass = isRejected ?
-                      'bg-red-500 border-2 border-red-400 shadow-lg shadow-red-500/25' :
+                      const colors = isRejected ?
+                      'bg-red-500 border-red-500 shadow-red-500/40' :
                       isCompleted ?
-                      'bg-purple-600 border-2 border-purple-400/90 shadow-md shadow-purple-500/20' :
-                      isCurrent ?
-                      'bg-dark-800 border-2 border-purple-400 ring-2 ring-purple-500/40 shadow-lg shadow-purple-500/15' :
-                      isUpcoming ?
-                      'bg-transparent border-2 border-dashed border-white/20' :
-                      'bg-dark-700 border-2 border-white/10';
+                      'bg-purple-500 border-purple-500 shadow-purple-500/40' :
+                      'bg-dark-700 border-white/10';
                       return (
                         <Fragment key={step}>
-                          <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+                          <div className="flex flex-col items-center gap-1.5">
                             <div
-                              className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center transition-all duration-300 ${circleClass} ${isCurrent && !isRejected ? 'sm:scale-105' : ''}`}>
+                              className={`h-7 w-7 sm:h-9 sm:w-9 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${colors} ${isCurrent || isRejected ? 'shadow-lg sm:scale-110' : ''}`}>
                               
                               {concern.status === 'rejected' &&
                               step === 'pending' ?
-                              <XCircleIcon className="h-4 w-4 sm:h-[18px] sm:w-[18px] text-white" /> :
+                              <XCircleIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" /> :
                               isCompleted ?
-                              <CheckCircle2Icon className="h-4 w-4 sm:h-[18px] sm:w-[18px] text-white" /> :
+                              <CheckCircle2Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" /> :
 
-                              <div className={`h-2 w-2 rounded-full ${isUpcoming ? 'bg-white/25' : 'bg-gray-500'}`} />
+                              <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-gray-600" />
                               }
                             </div>
                             <span
-                              className={`text-[9px] sm:text-[11px] font-medium text-center max-w-[5rem] sm:max-w-none leading-tight ${isCurrent || isRejected ? 'text-white' : isCompleted ? 'text-purple-300' : 'text-gray-500'}`}>
+                              className={`text-[9px] sm:text-xs font-medium text-center max-w-[4.5rem] sm:max-w-none leading-tight ${isCurrent || isRejected ? 'text-white' : isCompleted ? 'text-purple-400' : 'text-gray-500'}`}>
                               
                               {concern.status === 'rejected' &&
                               step === 'pending' ?
@@ -362,7 +286,7 @@ export function ConcernDetail({
                           </div>
                           {i < 2 &&
                           <div
-                            className={`flex-1 h-0.5 rounded-full -mt-6 sm:-mt-7 mx-0.5 ${concern.status === 'rejected' ? 'bg-white/5' : currentOrder > stepOrder ? 'bg-gradient-to-r from-purple-500 to-purple-400' : 'bg-white/10'}`} />
+                            className={`flex-1 h-0.5 rounded-full transition-all duration-500 -mt-4 sm:-mt-5 ${concern.status === 'rejected' ? 'bg-white/5' : currentOrder > stepOrder ? 'bg-purple-500' : 'bg-white/5'}`} />
 
                           }
                         </Fragment>);
@@ -372,38 +296,26 @@ export function ConcernDetail({
                 </div>
               </div>
 
-              <div className="citezen-detail-label mb-2">Reporter</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6 text-xs sm:text-sm text-gray-400 bg-dark-800/80 p-3 sm:p-4 rounded-xl border border-white/10">
-                <div className="flex items-start gap-2 min-w-0 sm:col-span-1">
-                  <UserIcon className="h-4 w-4 text-purple-400/80 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <div className="citezen-detail-label mb-0.5 !tracking-wider">Name</div>
-                    <span className="text-gray-200 font-medium break-words">{concern.studentName}</span>
-                  </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs sm:text-sm text-gray-400 mb-4 sm:mb-6 bg-dark-800 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-white/5">
+                <div className="flex items-center gap-1 min-w-0">
+                  <UserIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500 shrink-0" />
+                  <span className="text-gray-300 truncate max-w-[9rem] sm:max-w-none">{concern.studentName}</span>
                 </div>
-                <div className="flex items-start gap-2 min-w-0">
-                  <BuildingIcon className="h-4 w-4 text-purple-400/80 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <div className="citezen-detail-label mb-0.5 !tracking-wider">Department</div>
-                    <span className="text-gray-200 font-medium break-words">{concern.department}</span>
-                  </div>
+                <div className="flex items-center gap-1 min-w-0">
+                  <BuildingIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500 shrink-0" />
+                  <span className="text-gray-300 truncate max-w-[9rem] sm:max-w-none">{concern.department}</span>
                 </div>
-                <div className="flex items-start gap-2 min-w-0 sm:col-span-2">
-                  <CalendarIcon className="h-4 w-4 text-purple-400/80 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <div className="citezen-detail-label mb-0.5 !tracking-wider">Submitted</div>
-                    <span className="text-gray-200">{formatDate(concern.createdAt)}</span>
-                  </div>
+                <div className="flex items-center gap-1 min-w-0 w-full sm:w-auto">
+                  <CalendarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500 shrink-0" />
+                  <span className="truncate">{formatDate(concern.createdAt)}</span>
                 </div>
               </div>
 
-              <div className="max-w-none md:max-w-[52ch] lg:max-w-prose">
-                <h3 className="citezen-detail-label mb-2 sm:mb-3">
+              <div className="prose prose-invert max-w-none">
+                <h3 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider mb-1.5 sm:mb-2">
                   Description
                 </h3>
-                <p
-                  id="concern-detail-description"
-                  className="text-sm sm:text-[0.9375rem] text-gray-300 whitespace-pre-wrap leading-relaxed bg-white/[0.04] p-3 sm:p-4 rounded-xl border border-white/10 max-md:max-h-[min(36svh,240px)] max-md:overflow-y-auto custom-scrollbar md:shadow-inner">
+                <p className="text-sm sm:text-base text-gray-300 whitespace-pre-wrap leading-relaxed bg-white/5 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-white/10 max-md:max-h-[min(28svh,200px)] max-md:overflow-y-auto custom-scrollbar">
                   {concern.description}
                 </p>
               </div>
@@ -412,7 +324,7 @@ export function ConcernDetail({
             {/* Form Data Details */}
             {concern.formData && Object.keys(concern.formData).length > 0 &&
             <div>
-                <h3 className="citezen-detail-label mb-2 sm:mb-3">
+                <h3 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider mb-2 sm:mb-3">
                   Additional Details
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
@@ -436,7 +348,7 @@ export function ConcernDetail({
             {/* Attachments */}
             {concern.attachments && concern.attachments.length > 0 &&
             <div>
-                <h3 className="citezen-detail-label mb-3">
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">
                   Attachments
                 </h3>
                 <div className="flex flex-wrap gap-3">
@@ -454,53 +366,50 @@ export function ConcernDetail({
             }
           </div>
 
-          <div className="w-full flex flex-1 flex-col min-h-0 md:flex-1 md:min-w-[min(40%,320px)] lg:min-w-[380px] md:max-w-[50%] bg-[var(--bg-secondary)]/95 overflow-hidden md:border-l border-white/10 md:shadow-[inset_1px_0_0_rgba(255,255,255,0.04)]">
-            <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-white/10 bg-white/[0.04] flex items-center gap-2 shrink-0">
+          {/* Right Column: Comments/Timeline — mobile: fills remaining viewport */}
+          <div className="w-full flex flex-1 flex-col min-h-0 max-md:min-h-[min(32svh,240px)] md:min-h-0 md:flex-1 md:min-w-0 md:max-w-[50%] bg-dark-800/80 overflow-hidden md:shadow-inner">
+            <div className="px-3 py-2 sm:p-4 border-b border-white/10 bg-white/5 flex items-center gap-2 shrink-0">
               <MessageSquareIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400 shrink-0" />
-              <div className="min-w-0">
-                <h3 className="font-semibold text-white text-sm sm:text-base leading-tight">
-                  Activity & Comments
-                </h3>
-                <p className="text-[10px] sm:text-xs text-gray-500 truncate">
-                  Thread for this concern
-                </p>
-              </div>
+              <h3 className="font-semibold text-white text-xs sm:text-base">
+                Activity & Comments
+              </h3>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 sm:p-4 custom-scrollbar divide-y divide-white/[0.06]">
-              <div className="flex gap-3 pb-4 pt-1">
-                <div className="flex flex-col items-center pt-0.5">
-                  <div className="h-9 w-9 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/35 shrink-0">
-                    <UserIcon className="h-4 w-4 text-purple-300" />
+            <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 sm:p-4 space-y-3 sm:space-y-4 custom-scrollbar">
+              {/* Initial Submission Timeline Item */}
+              <div className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="h-8 w-8 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30 shrink-0">
+                    <UserIcon className="h-4 w-4 text-purple-400" />
                   </div>
-                  <div className="w-px flex-1 min-h-[1rem] bg-gradient-to-b from-white/15 to-transparent my-1" />
+                  <div className="w-px h-full bg-white/10 my-1" />
                 </div>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 mb-1.5">
-                    <span className="text-sm font-semibold text-white">
+                <div className="pb-4">
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-sm font-medium text-white">
                       {concern.studentName}
                     </span>
-                    <time className="text-[11px] text-gray-500 tabular-nums shrink-0" dateTime={concern.createdAt}>
+                    <span className="text-xs text-gray-500">
                       {formatDate(concern.createdAt)}
-                    </time>
+                    </span>
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-300 bg-white/[0.05] p-3 rounded-2xl rounded-tl-sm border border-white/10 shadow-sm">
-                    Concern submitted and routed to{' '}
-                    <span className="text-purple-200/90">{concern.department}</span>.
+                  <div className="text-xs sm:text-sm text-gray-400 bg-white/5 p-2.5 sm:p-3 rounded-lg sm:rounded-xl rounded-tl-none border border-white/10">
+                    Concern submitted and routed to {concern.department}.
                   </div>
                 </div>
               </div>
 
+              {/* Comments */}
               {concern.comments.map((comment, index) => {
+                const isLast = index === concern.comments.length - 1;
                 const isStaff =
                 comment.authorRole === 'staff' ||
                 comment.authorRole === 'admin';
-                const isLastComment = index === concern.comments.length - 1;
                 return (
-                  <div key={comment.id} className="flex gap-3 py-4 first:pt-2">
-                    <div className="flex flex-col items-center pt-0.5">
+                  <div key={comment.id} className="flex gap-3">
+                    <div className="flex flex-col items-center">
                       <div
-                        className={`h-9 w-9 rounded-full flex items-center justify-center border shrink-0 ${isStaff ? 'bg-sky-500/15 border-sky-400/35 text-sky-300' : 'bg-purple-500/15 border-purple-400/35 text-purple-300'}`}>
+                        className={`h-8 w-8 rounded-full flex items-center justify-center border shrink-0 ${isStaff ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' : 'bg-purple-500/20 border-purple-500/30 text-purple-400'}`}>
                         
                         {isStaff ?
                         <BuildingIcon className="h-4 w-4" /> :
@@ -508,29 +417,24 @@ export function ConcernDetail({
                         <UserIcon className="h-4 w-4" />
                         }
                       </div>
-                      {!isLastComment &&
-                    <div className="w-px flex-1 min-h-[0.75rem] bg-gradient-to-b from-white/12 to-transparent my-1" />
-                    }
+                      {!isLast &&
+                      <div className="w-px h-full bg-white/10 my-1" />
+                      }
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
-                        <span className="text-sm font-semibold text-white">
+                    <div className="pb-4 flex-1">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-sm font-medium text-white">
                           {comment.author}
                         </span>
-                        <span
-                          className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md border ${rolePillClass(comment.authorRole)}`}>
-                          
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
                           {comment.authorRole}
                         </span>
-                        <time
-                          className="text-[11px] text-gray-500 ml-auto tabular-nums"
-                          dateTime={comment.createdAt}>
-                          
+                        <span className="text-xs text-gray-500 ml-auto">
                           {formatDate(comment.createdAt)}
-                        </time>
+                        </span>
                       </div>
                       <div
-                        className={`text-xs sm:text-sm p-3 rounded-2xl rounded-tl-sm border leading-relaxed ${isStaff ? 'bg-sky-500/[0.07] border-sky-500/15 text-gray-200' : 'bg-white/[0.05] border-white/10 text-gray-200'}`}>
+                        className={`text-xs sm:text-sm p-2.5 sm:p-3 rounded-lg sm:rounded-xl rounded-tl-none border ${isStaff ? 'bg-blue-500/5 border-blue-500/10 text-gray-300' : 'bg-white/5 border-white/10 text-gray-300'}`}>
                         
                         {comment.content}
                       </div>
@@ -540,13 +444,14 @@ export function ConcernDetail({
               })}
             </div>
 
-            <div className="px-3 py-2.5 border-t border-white/10 bg-white/[0.04] shrink-0 citezen-safe-bottom sm:px-4 sm:py-3">
+            {/* Comment Input */}
+            <div className="px-3 py-2 border-t border-white/10 bg-white/5 shrink-0 citezen-safe-bottom sm:p-3 sm:pb-3">
               <form onSubmit={handleAddComment} className="relative">
                 <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Type a message…"
-                  className="w-full bg-dark-900/90 border border-white/12 rounded-xl pl-3 sm:pl-4 pr-14 py-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/80 focus:ring-2 focus:ring-purple-500/35 transition-all resize-none custom-scrollbar min-h-[76px] sm:min-h-[80px]"
+                  placeholder="Type a message..."
+                  className="w-full bg-dark-900 border border-white/10 rounded-lg sm:rounded-xl pl-2.5 sm:pl-4 pr-12 sm:pr-14 py-2.5 sm:py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 transition-all resize-none custom-scrollbar min-h-[72px] max-md:min-h-[64px] sm:min-h-[72px]"
                   rows={2}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -559,7 +464,7 @@ export function ConcernDetail({
                   type="submit"
                   disabled={!newComment.trim()}
                   aria-label="Send comment"
-                  className="absolute right-2 bottom-2 min-h-[44px] min-w-[44px] p-2 rounded-xl bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-purple-600 transition-colors touch-manipulation flex items-center justify-center shadow-lg shadow-purple-900/30 ring-offset-2 ring-offset-[var(--bg-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">
+                  className="absolute right-1.5 bottom-1.5 sm:right-2 sm:bottom-2 min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-[40px] p-2 rounded-lg sm:rounded-xl bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 disabled:hover:bg-purple-600 transition-colors touch-manipulation flex items-center justify-center">
                   
                   <SendIcon className="h-4 w-4" />
                 </button>
@@ -603,11 +508,9 @@ export function ConcernDetail({
                 : { y: '105%', opacity: 1, scale: 1 }
             }
             transition={
-              reduceMotion ?
-              { duration: 0.01 } :
-              isDesktopForward ?
-              { duration: 0.22, ease: [0.4, 0, 0.2, 1] as const } :
-              { type: 'spring', stiffness: 380, damping: 36 }
+              isDesktopForward
+                ? { duration: 0.22, ease: [0.4, 0, 0.2, 1] }
+                : { type: 'spring', stiffness: 380, damping: 36 }
             }
             className="absolute inset-x-0 bottom-0 z-[71] flex max-h-[min(88dvh,560px)] flex-col rounded-t-[1.35rem] border border-white/10 bg-[var(--bg-secondary)] shadow-2xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:w-[min(calc(100vw-2rem),24rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[min(80vh,520px)] overflow-hidden">
             

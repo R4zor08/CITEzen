@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "npx vite",
+    "tunnel:stop": "node scripts/stop-ngrok.mjs",
+    "tunnel": "ngrok http 5173",
+    "tunnel:api": "ngrok http 3001",
     "server:dev": "npm run dev --prefix server",
     "server:db": "npm run db:push --prefix server && npm run db:seed --prefix server",
     "build": "npx vite build",

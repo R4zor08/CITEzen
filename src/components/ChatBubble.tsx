@@ -1,9 +1,7 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '../types';
 import { toast } from 'sonner';
-import { getApiBase } from '../lib/api';
-import { optimizeChatImageFromDataUrl } from '../lib/optimizeChatImage';
 import {
   MessageCircleIcon,
   XIcon,
@@ -11,7 +9,6 @@ import {
   UserIcon,
   Loader2Icon,
   Trash2Icon,
-  PaperclipIcon,
   FileTextIcon,
   FileIcon,
   DownloadIcon,
@@ -22,7 +19,9 @@ import {
   PlusIcon,
   PencilIcon,
   SearchIcon,
-  AlertTriangleIcon } from
+  AlertTriangleIcon,
+  Copy as CopyIcon,
+  RefreshCw as RefreshCwIcon } from
 'lucide-react';
 interface Attachment {
   type: 'image' | 'file';
@@ -48,15 +47,6 @@ interface ChatBubbleProps {
 }
 const CITEZEN_LOGO = "/Gemini_Generated_Image_u7mgetu7mgetu7mg.png";
 
-/** Shown when chat errors unless the server already included the same guidance */
-const GABAI_OLLAMA_VS_GROQ_HELP = `Image and document analysis runs on your computer through Ollama (not Groq).
-
-• Install and open Ollama (https://ollama.com)
-• Run: ollama pull llava (and ollama pull llama3.2 if your app expects both; or set OLLAMA_TEXT_MODEL=llava in server/.env if you only have llava)
-• Restart the CITEzen API (npm run server:dev)
-
-Text-only chat still works with Groq without Ollama.`;
-
 const formatFileSize = (bytes: number) => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -74,12 +64,30 @@ const getDateGroup = (dateStr: string) => {
   if (diffDays <= 7) return 'Previous 7 Days';
   return 'Older';
 };
+
+/** Plain, professional assistant text: no markdown asterisks in the UI. */
+function formatAssistantReply(text: string): string {
+  if (!text) return text;
+  let s = text;
+  for (let i = 0; i < 24 && s.includes('**'); i++) {
+    s = s.replace(/\*\*([^*]*)\*\*/g, '$1');
+  }
+  for (let i = 0; i < 24; i++) {
+    const next = s.replace(/\*([^*\n]+)\*/g, '$1');
+    if (next === s) break;
+    s = next;
+  }
+  s = s.replace(/^(\s*)\*\s+/gm, '$1- ');
+  s = s.replace(/\*/g, '');
+  return s;
+}
+
 export function ChatBubble({ user }: ChatBubbleProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<'chat' | 'history'>('chat');
   const createInitialGreeting = (): Message => ({
     role: 'assistant',
-    content: `Hi ${user.name.split(' ')[0]}! I'm GabAI, your CITEzen campus assistant. How can I help you with your concerns today?`
+    content: `Hi ${user.name.split(' ')[0]}! I'm GabAI—your guide for CITEzen (concerns, departments, and how the app works). Ask me anything about the system, or other questions too; I'll help when I can and be clear when something isn't my specialty. What would you like to know?`
   });
   const createNewSession = (): ChatSession => ({
     id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
@@ -148,11 +156,18 @@ export function ChatBubble({ user }: ChatBubbleProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
+  const streamBufferRef = useRef('');
+  const streamRevealRawLenRef = useRef(0);
+  const streamRevealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
+  const [inlineEditIndex, setInlineEditIndex] = useState<number | null>(null);
+  const [inlineEditDraft, setInlineEditDraft] = useState('');
   const [stagedAttachment, setStagedAttachment] = useState<Attachment | null>(
     null
   );
   const [isProcessingFile, setIsProcessingFile] = useState(false);
-  const [fileProcessHint, setFileProcessHint] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   // History UI State
@@ -171,6 +186,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({
       behavior: 'smooth'
@@ -196,6 +212,49 @@ export function ChatBubble({ user }: ChatBubbleProps) {
     setView('chat');
     setStagedAttachment(null);
     setInput('');
+    setInlineEditIndex(null);
+    setInlineEditDraft('');
+  };
+
+  const stopStreaming = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  };
+
+  const clearStreamReveal = () => {
+    if (streamRevealIntervalRef.current) {
+      clearInterval(streamRevealIntervalRef.current);
+      streamRevealIntervalRef.current = null;
+    }
+  };
+
+  const flushStreamDisplay = () => {
+    clearStreamReveal();
+    const target = streamBufferRef.current;
+    streamRevealRawLenRef.current = target.length;
+    setStreamingContent(formatAssistantReply(target));
+  };
+
+  const startStreamReveal = () => {
+    clearStreamReveal();
+    streamBufferRef.current = '';
+    streamRevealRawLenRef.current = 0;
+    setStreamingContent('');
+    streamRevealIntervalRef.current = setInterval(() => {
+      const target = streamBufferRef.current;
+      let len = streamRevealRawLenRef.current;
+      if (len >= target.length) {
+        if (target.length > 0) {
+          setStreamingContent(formatAssistantReply(target));
+        }
+        return;
+      }
+      const lag = target.length - len;
+      const step = lag > 120 ? 2 : 1;
+      len = Math.min(target.length, len + step);
+      streamRevealRawLenRef.current = len;
+      setStreamingContent(formatAssistantReply(target.slice(0, len)));
+    }, 115);
   };
   const executeConfirmAction = () => {
     if (!confirmAction) return;
@@ -271,45 +330,22 @@ export function ChatBubble({ user }: ChatBubbleProps) {
       return;
     }
     setIsProcessingFile(true);
-    setFileProcessHint('Reading file…');
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      const raw = e.target?.result as string;
-      try {
-        if (isImage) {
-          setFileProcessHint('Shrinking image for faster analysis…');
-          const opt = await optimizeChatImageFromDataUrl(raw, file.name);
-          setStagedAttachment({
-            type: 'image',
-            name: opt.name,
-            size: opt.size,
-            mimeType: opt.mimeType,
-            dataUrl: opt.dataUrl
-          });
-        } else {
-          setStagedAttachment({
-            type: 'file',
-            name: file.name,
-            size: file.size,
-            mimeType: file.type,
-            dataUrl: raw
-          });
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error('Could not process image', {
-          description:
-            err instanceof Error ? err.message : 'Try a smaller JPEG or PNG.'
+    reader.onload = (e) => {
+      setTimeout(() => {
+        setStagedAttachment({
+          type: isImage ? 'image' : 'file',
+          name: file.name,
+          size: file.size,
+          mimeType: file.type,
+          dataUrl: e.target?.result as string
         });
-      } finally {
         setIsProcessingFile(false);
-        setFileProcessHint('');
-      }
+      }, 600);
     };
     reader.onerror = () => {
       toast.error('Error reading file');
       setIsProcessingFile(false);
-      setFileProcessHint('');
     };
     reader.readAsDataURL(file);
   };
@@ -329,19 +365,302 @@ export function ChatBubble({ user }: ChatBubbleProps) {
     }
   };
   // --- Messaging ---
+  const streamGroqCompletion = useCallback(
+    async (chatId: string, conversation: Message[]) => {
+      const groqKey = import.meta.env.VITE_GROQ_API_KEY;
+      if (!groqKey) {
+        toast.error('Chat is not configured: set VITE_GROQ_API_KEY in .env');
+        setIsLoading(false);
+        return;
+      }
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setIsLoading(true);
+      setIsStreaming(false);
+      setStreamingContent('');
+      streamBufferRef.current = '';
+      clearStreamReveal();
+
+      const contextMessages = conversation.slice(-20).map((m) => {
+        let content = m.content;
+        if (m.attachment) {
+          const attachmentNote = `[User attached a ${m.attachment.type}: ${m.attachment.name} (${formatFileSize(m.attachment.size)})]`;
+          content = content ? `${content}\n${attachmentNote}` : attachmentNote;
+        }
+        return {
+          role: m.role,
+          content
+        };
+      });
+
+      try {
+        const response = await fetch(
+          'https://api.groq.com/openai/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${groqKey}`
+            },
+            signal: controller.signal,
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [
+                {
+                  role: 'system',
+                  content: `You are GabAI, the professional campus assistant for the CITEzen concern management system at NEMSU (North Eastern Mindanao State University). Your name "GabAI" comes from "Gabay" (guide in Filipino/Bisaya) + AI. Current user: ${user.name} (${user.role}).
+
+## How you think (do this silently before answering)
+1. Decide if the question is about CITEzen / campus concerns / NEMSU workflows that touch this app, loosely related (general student life, university norms), or unrelated (random trivia, homework in other subjects, coding, entertainment, etc.).
+2. Answer accordingly: be clear, respectful, and explicit about what you can and cannot do.
+
+## When the question IS about CITEzen (concerns, departments, submitting or tracking issues, dashboards, roles, how the app works)
+- Give clear, practical guidance. Use short numbered steps (1. 2.) or lines starting with "- " when lists help.
+- If something depends on their account or live data you cannot see, say so and tell them exactly where in the app to look (e.g. student/staff/admin dashboard) instead of guessing.
+
+## When it is only loosely related (general campus life, study tips, etiquette—not specific app screens)
+- You may answer briefly and helpfully, then you may gently offer that you specialize in CITEzen concerns if they need that next.
+
+## When it is NOT about CITEzen or the campus concern process
+- Still be helpful and polite: you may give a short accurate answer if it is general knowledge and safe.
+- In the same reply, clearly say that it is outside your main role as the CITEzen assistant, so expectations stay honest.
+- Invite them to ask anything about concerns, departments, or using CITEzen next. Do not pretend to have access to their grades, accounts, or external systems.
+
+## User-visible formatting (mandatory)
+- Write in plain text only. Never use asterisks (*), double asterisks, or markdown for emphasis, bullets, or italics.
+- Do not surround words with special characters for styling. Use normal sentences, optional numbered lists, or hyphen-led lines (- like this).
+
+## Always
+- Never invent features, policies, or data about the user or the university.
+- Refuse harmful or illegal requests briefly and redirect to appropriate help.
+- If the user attaches a file or image, acknowledge it from the bracket description in the user message.
+
+IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual (English, Tagalog/Filipino, Bisaya/Cebuano). Always reply in the same language the user uses; if they mix languages (Taglish, Bislish), match naturally.`
+                },
+                ...contextMessages
+              ],
+              temperature: 0.5,
+              max_tokens: 768,
+              stream: true
+            })
+          }
+        );
+
+        if (!response.ok) throw new Error('Failed to fetch response');
+        setIsLoading(false);
+        setIsStreaming(true);
+        startStreamReveal();
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        if (!reader) throw new Error('No response body');
+        let streamDone = false;
+        while (!streamDone) {
+          const { done, value } = await reader.read();
+          if (done) {
+            streamDone = true;
+            break;
+          }
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter((line) => line.trim() !== '');
+          for (const line of lines) {
+            if (line === 'data: [DONE]') continue;
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const json = JSON.parse(line.slice(6));
+              const delta = json.choices?.[0]?.delta?.content;
+              if (delta) {
+                streamBufferRef.current += delta;
+              }
+            } catch {
+              // Skip malformed chunks
+            }
+          }
+        }
+
+        flushStreamDisplay();
+        const fullContent = formatAssistantReply(streamBufferRef.current);
+        streamBufferRef.current = '';
+        clearStreamReveal();
+
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === chatId
+              ? {
+                  ...s,
+                  messages: [
+                    ...s.messages,
+                    {
+                      role: 'assistant',
+                      content: fullContent
+                    }
+                  ],
+                  updatedAt: new Date().toISOString()
+                }
+              : s
+          )
+        );
+        setIsStreaming(false);
+        setStreamingContent('');
+      } catch (error) {
+        const anyErr = error as any;
+        const isAbort =
+          anyErr?.name === 'AbortError' ||
+          String(anyErr?.message ?? '').toLowerCase().includes('aborted');
+
+        if (isAbort) {
+          flushStreamDisplay();
+          const partial = formatAssistantReply(streamBufferRef.current.trim());
+          streamBufferRef.current = '';
+          clearStreamReveal();
+          if (partial) {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === chatId
+                  ? {
+                      ...s,
+                      messages: [
+                        ...s.messages,
+                        {
+                          role: 'assistant',
+                          content: partial
+                        }
+                      ],
+                      updatedAt: new Date().toISOString()
+                    }
+                  : s
+              )
+            );
+          }
+          setIsStreaming(false);
+          setStreamingContent('');
+          return;
+        }
+
+        console.error('Chat error:', error);
+        setIsStreaming(false);
+        setStreamingContent('');
+        streamBufferRef.current = '';
+        clearStreamReveal();
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === chatId
+              ? {
+                  ...s,
+                  messages: [
+                    ...s.messages,
+                    {
+                      role: 'assistant',
+                      content:
+                        'Sorry, I encountered an error connecting to the server. Please try again later.'
+                    }
+                  ],
+                  updatedAt: new Date().toISOString()
+                }
+              : s
+          )
+        );
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+        abortRef.current = null;
+        streamBufferRef.current = '';
+        clearStreamReveal();
+        setStreamingContent('');
+      }
+    },
+    [user]
+  );
+
+  const copyMessageText = async (text: string) => {
+    const t = text.trim();
+    if (!t) return;
+    try {
+      await navigator.clipboard.writeText(t);
+      toast.success('Copied to clipboard');
+    } catch {
+      toast.error('Could not copy');
+    }
+  };
+
+  const resendUserMessageAt = async (index: number) => {
+    if (isLoading || isStreaming) return;
+    const sess = sessions.find((s) => s.id === activeChatId);
+    if (!sess || sess.messages[index]?.role !== 'user') return;
+    const trimmed = sess.messages.slice(0, index + 1);
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeChatId
+          ? { ...s, messages: trimmed, updatedAt: new Date().toISOString() }
+          : s
+      )
+    );
+    await streamGroqCompletion(activeChatId, trimmed);
+  };
+
+  const regenerateAssistantAt = async (index: number) => {
+    if (isLoading || isStreaming) return;
+    const sess = sessions.find((s) => s.id === activeChatId);
+    if (!sess || sess.messages[index]?.role !== 'assistant') return;
+    const trimmed = sess.messages.slice(0, index);
+    if (trimmed.length === 0) {
+      toast.error('Nothing to regenerate from yet.');
+      return;
+    }
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeChatId
+          ? { ...s, messages: trimmed, updatedAt: new Date().toISOString() }
+          : s
+      )
+    );
+    await streamGroqCompletion(activeChatId, trimmed);
+  };
+
+  const saveInlineUserEdit = async (index: number) => {
+    const text = inlineEditDraft.trim();
+    if (!text) {
+      toast.error('Message cannot be empty.');
+      return;
+    }
+    if (isLoading || isStreaming) return;
+    const sess = sessions.find((s) => s.id === activeChatId);
+    if (!sess || sess.messages[index]?.role !== 'user') return;
+    const updated = sess.messages.map((m, i) =>
+      i === index ? { ...m, content: text } : m
+    );
+    const trimmed = updated.slice(0, index + 1);
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeChatId
+          ? { ...s, messages: trimmed, updatedAt: new Date().toISOString() }
+          : s
+      )
+    );
+    setInlineEditIndex(null);
+    setInlineEditDraft('');
+    await streamGroqCompletion(activeChatId, trimmed);
+  };
+
   const handleSend = async (textToSend?: string) => {
     const messageText =
-    typeof textToSend === 'string' ? textToSend : input.trim();
+      typeof textToSend === 'string' ? textToSend : input.trim();
     if (
-    !messageText && !stagedAttachment ||
-    isLoading ||
-    isProcessingFile ||
-    !activeSession)
-
-    return;
+      (!messageText && !stagedAttachment) ||
+      isLoading ||
+      isStreaming ||
+      isProcessingFile ||
+      !activeSession
+    ) {
+      return;
+    }
     if (typeof textToSend !== 'string') setInput('');
     const currentAttachment = stagedAttachment;
     setStagedAttachment(null);
+    setInlineEditIndex(null);
+    setInlineEditDraft('');
+
     const newUserMessage: Message = {
       role: 'user',
       content: messageText,
@@ -350,144 +669,28 @@ export function ChatBubble({ user }: ChatBubbleProps) {
       })
     };
     const newMessages = [...activeSession.messages, newUserMessage];
-    // Auto-title generation
+
     let newTitle = activeSession.title;
     if (activeSession.messages.length === 1 && newTitle === 'GabAI') {
       newTitle =
-      messageText.slice(0, 40) + (messageText.length > 40 ? '...' : '');
+        messageText.slice(0, 40) + (messageText.length > 40 ? '...' : '');
       if (!newTitle && currentAttachment)
-      newTitle = `Attached ${currentAttachment.type}`;
+        newTitle = `Attached ${currentAttachment.type}`;
     }
     setSessions((prev) =>
-    prev.map((s) =>
-    s.id === activeChatId ?
-    {
-      ...s,
-      title: newTitle,
-      messages: newMessages,
-      updatedAt: new Date().toISOString()
-    } :
-    s
-    )
-    );
-    setIsLoading(true);
-    setStreamingContent('');
-    const apiBase = getApiBase();
-    const payloadMessages = newMessages.slice(-20).map((m) => ({
-      role: m.role,
-      content: m.content,
-      ...(m.attachment ? { attachment: m.attachment } : {})
-    }));
-    try {
-      const response = await fetch(`${apiBase}/api/gabai/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user: { name: user.name, role: user.role },
-          messages: payloadMessages
-        })
-      });
-      if (!response.ok) {
-        let msg = `Chat failed (${response.status})`;
-        try {
-          const j = (await response.json()) as { error?: string };
-          if (j.error) msg = j.error;
-        } catch {
-          /* keep msg */
-        }
-        throw new Error(msg);
-      }
-      setIsLoading(false);
-      setIsStreaming(true);
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = '';
-      if (!reader) throw new Error('No response body');
-      let streamDone = false;
-      let sseLineBuf = '';
-      while (!streamDone) {
-        const { done, value } = await reader.read();
-        if (done) {
-          streamDone = true;
-          break;
-        }
-        sseLineBuf += decoder.decode(value, {
-          stream: true
-        });
-        const rawLines = sseLineBuf.split('\n');
-        sseLineBuf = rawLines.pop() ?? '';
-        const lines = rawLines.filter((line) => line.trim() !== '');
-        for (const line of lines) {
-          if (line === 'data: [DONE]') continue;
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const json = JSON.parse(line.slice(6));
-            const delta = json.choices?.[0]?.delta?.content;
-            if (delta) {
-              fullContent += delta;
-              setStreamingContent(fullContent);
+      prev.map((s) =>
+        s.id === activeChatId
+          ? {
+              ...s,
+              title: newTitle,
+              messages: newMessages,
+              updatedAt: new Date().toISOString()
             }
-          } catch {
-
-            // Skip malformed chunks
-          }}
-      }
-      // Streaming complete — commit the full message to the session
-      setSessions((prev) =>
-      prev.map((s) =>
-      s.id === activeChatId ?
-      {
-        ...s,
-        messages: [
-        ...s.messages,
-        {
-          role: 'assistant',
-          content: fullContent
-        }],
-
-        updatedAt: new Date().toISOString()
-      } :
-      s
+          : s
       )
-      );
-      setIsStreaming(false);
-      setStreamingContent('');
-    } catch (error) {
-      console.error('Chat error:', error);
-      const detail =
-      error instanceof Error ? error.message : 'Please try again later.';
-      const serverIncludedGuide =
-        detail.includes('Image and document analysis runs on your computer') ||
-        detail.includes('Text-only chat still works with Groq without Ollama');
-      const followUpHelp = serverIncludedGuide ? '' : `\n\n${GABAI_OLLAMA_VS_GROQ_HELP}`;
-      toast.error('GabAI unavailable', {
-        description: detail.slice(0, 280)
-      });
-      setIsStreaming(false);
-      setStreamingContent('');
-      setSessions((prev) =>
-      prev.map((s) =>
-      s.id === activeChatId ?
-      {
-        ...s,
-        messages: [
-        ...s.messages,
-        {
-          role: 'assistant',
-          content: `Sorry — ${detail}${followUpHelp}`
-        }],
+    );
 
-        updatedAt: new Date().toISOString()
-      } :
-      s
-      )
-      );
-    } finally {
-      setIsLoading(false);
-      setIsStreaming(false);
-    }
+    await streamGroqCompletion(activeChatId, newMessages);
   };
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -775,7 +978,9 @@ export function ChatBubble({ user }: ChatBubbleProps) {
 
                             const previewText = lastMessage.attachment ?
                             `[Attached ${lastMessage.attachment.type}]` :
-                            lastMessage.content || 'Empty message';
+                            (lastMessage.role === 'assistant' ?
+                              formatAssistantReply(lastMessage.content) :
+                              lastMessage.content) || 'Empty message';
                             return (
                               <motion.div
                                 key={session.id}
@@ -961,7 +1166,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
 
                     {/* Messages Area */}
                     <div
-                  className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative"
+                  className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 custom-scrollbar relative"
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}>
@@ -989,6 +1194,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                     }
                       </AnimatePresence>
 
+                    <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">
                       {activeSession?.messages.map((msg, index) => {
                     const isLast =
                     index === activeSession.messages.length - 1;
@@ -1012,10 +1218,10 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                           damping: 25,
                           stiffness: 300
                         }}
-                        className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        className={`group/msg flex w-full items-start gap-2 sm:gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         
                             {msg.role === 'assistant' &&
-                        <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10 shrink-0 mb-1">
+                        <div className="relative mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10">
                                 <img
                             src={CITEZEN_LOGO}
                             alt="GabAI"
@@ -1025,68 +1231,167 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                         }
 
                             <div
-                          className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col gap-2 ${msg.role === 'user' ? 'chat-user-bubble bg-purple-600 text-white rounded-br-sm shadow-lg shadow-purple-500/20' : 'bg-dark-800 border border-white/10 text-gray-200 rounded-bl-sm shadow-md'}`}>
+                          className={`flex min-w-0 max-w-[min(100%,36rem)] flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                           
-                              {msg.content &&
-                          <p className="whitespace-pre-wrap leading-relaxed">
-                                  {msg.content}
-                                </p>
-                          }
-
-                              {msg.attachment &&
-                          <div className={msg.content ? 'mt-1' : ''}>
-                                  {msg.attachment.type === 'image' ?
-                            <img
-                              src={msg.attachment.dataUrl}
-                              alt={msg.attachment.name}
-                              className="max-w-[220px] w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity border border-white/10 shadow-sm"
-                              onClick={() =>
-                              setLightboxImage(
-                                msg.attachment!.dataUrl
-                              )
-                              } /> :
-
-
-                            <a
-                              href={msg.attachment.dataUrl}
-                              download={msg.attachment.name}
-                              className={`flex items-center gap-3 p-2.5 rounded-xl border ${msg.role === 'user' ? 'bg-white/10 border-white/20 hover:bg-white/20' : 'bg-dark-900 border-white/10 hover:bg-white/5'} transition-colors no-underline text-current group`}>
-                              
-                                      <div
-                                className={`p-2 rounded-lg ${msg.role === 'user' ? 'bg-white/20' : 'bg-dark-800'}`}>
+                              <div
+                            className={`rounded-[1.35rem] px-4 py-2.5 text-[15px] leading-7 shadow-sm ${msg.role === 'user' ? 'chat-user-bubble chat-bubble-user' : 'chat-bubble-assistant'}`}>
+                            
+                                {msg.role === 'user' && inlineEditIndex === index ?
+                            <div className="w-full min-w-[min(100%,16rem)] space-y-2">
+                                    <textarea
+                                value={inlineEditDraft}
+                                onChange={(e) => setInlineEditDraft(e.target.value)}
+                                rows={3}
+                                className="chat-inline-edit w-full resize-y rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                disabled={isLoading || isStreaming} />
                                 
-                                        {msg.attachment.mimeType.includes(
-                                  'pdf'
-                                ) ||
-                                msg.attachment.mimeType.includes(
-                                  'text'
-                                ) ?
-                                <FileTextIcon className="h-4 w-4" /> :
-                                msg.attachment.mimeType.includes(
-                                  'spreadsheet'
-                                ) ?
-                                <FileSpreadsheetIcon className="h-4 w-4" /> :
+                                    <div className="flex justify-end gap-2">
+                                      <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInlineEditIndex(null);
+                                    setInlineEditDraft('');
+                                  }}
+                                  className="chat-inline-cancel-btn rounded-lg px-3 py-1.5 text-xs text-[var(--chat-bubble-fg-muted)]">
+                                  
+                                        Cancel
+                                      </button>
+                                      <button
+                                  type="button"
+                                  onClick={() => void saveInlineUserEdit(index)}
+                                  disabled={isLoading || isStreaming}
+                                  className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-500 disabled:opacity-40">
+                                  
+                                        Save & resend
+                                      </button>
+                                    </div>
+                                  </div> :
 
-                                <FileIcon className="h-4 w-4" />
+                            <>
+                                    {msg.content &&
+                              <p className="whitespace-pre-wrap">
+                                          {msg.role === 'assistant' ?
+                                  formatAssistantReply(msg.content) :
+                                  msg.content}
+                                        </p>
+                              }
+
+                                    {msg.attachment &&
+                              <div className={msg.content ? 'mt-2' : ''}>
+                                          {msg.attachment.type === 'image' ?
+                                <img
+                                  src={msg.attachment.dataUrl}
+                                  alt={msg.attachment.name}
+                                  className="chat-attach-thumb max-w-[220px] w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                                  onClick={() =>
+                                  setLightboxImage(
+                                    msg.attachment!.dataUrl
+                                  )
+                                  } /> :
+
+
+                                <a
+                                  href={msg.attachment.dataUrl}
+                                  download={msg.attachment.name}
+                                  className={`flex items-center gap-3 p-2.5 rounded-xl border transition-colors no-underline text-current group ${msg.role === 'user' ? 'chat-attach-row-user hover:brightness-110' : 'chat-attach-row-asst hover:brightness-110'}`}>
+                                  
+                                          <div
+                                    className={`p-2 rounded-lg ${msg.role === 'user' ? 'chat-attach-icon-user' : 'chat-attach-icon-asst'}`}>
+                                    
+                                            {msg.attachment.mimeType.includes(
+                                      'pdf'
+                                    ) ||
+                                    msg.attachment.mimeType.includes(
+                                      'text'
+                                    ) ?
+                                    <FileTextIcon className="h-4 w-4" /> :
+                                    msg.attachment.mimeType.includes(
+                                      'spreadsheet'
+                                    ) ?
+                                    <FileSpreadsheetIcon className="h-4 w-4" /> :
+
+                                    <FileIcon className="h-4 w-4" />
+                                    }
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium truncate">
+                                              {msg.attachment.name}
+                                            </p>
+                                            <p className="text-[10px] opacity-70">
+                                              {formatFileSize(msg.attachment.size)}
+                                            </p>
+                                          </div>
+                                          <DownloadIcon className="h-4 w-4 opacity-50 group-hover:opacity-100 shrink-0 transition-opacity" />
+                                        </a>
                                 }
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium truncate">
-                                          {msg.attachment.name}
-                                        </p>
-                                        <p className="text-[10px] opacity-70">
-                                          {formatFileSize(msg.attachment.size)}
-                                        </p>
-                                      </div>
-                                      <DownloadIcon className="h-4 w-4 opacity-50 group-hover:opacity-100 shrink-0 transition-opacity" />
-                                    </a>
+                                          </div>
+                              }
+                                  </>
                             }
-                                </div>
-                          }
+                              </div>
+
+                              {(msg.content || msg.role === 'assistant') &&
+                              <div
+                            className={`flex flex-wrap items-center gap-1 px-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/msg:opacity-100 sm:group-focus-within/msg:opacity-100 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            
+                                <button
+                              type="button"
+                              onClick={() =>
+                              void copyMessageText(
+                                msg.role === 'assistant' ?
+                                formatAssistantReply(msg.content) :
+                                msg.content
+                              )
+                              }
+                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 hover:bg-white/5 hover:text-gray-200">
+                              
+                                    <CopyIcon className="h-3.5 w-3.5" />
+                                    Copy
+                                  </button>
+
+                                {msg.role === 'user' && !msg.attachment &&
+                              <>
+                                    <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isLoading || isStreaming) return;
+                                    setInlineEditIndex(index);
+                                    setInlineEditDraft(msg.content);
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 hover:bg-white/5 hover:text-gray-200">
+                                  
+                                        <PencilIcon className="h-3.5 w-3.5" />
+                                        Edit
+                                      </button>
+                                    <button
+                                  type="button"
+                                  onClick={() => void resendUserMessageAt(index)}
+                                  disabled={isLoading || isStreaming}
+                                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 hover:bg-white/5 hover:text-gray-200 disabled:opacity-40">
+                                  
+                                        <RefreshCwIcon className="h-3.5 w-3.5" />
+                                        Resend
+                                      </button>
+                                  </>
+                            }
+
+                                {msg.role === 'assistant' &&
+                              <button
+                                type="button"
+                                onClick={() => void regenerateAssistantAt(index)}
+                                disabled={isLoading || isStreaming}
+                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 hover:bg-white/5 hover:text-gray-200 disabled:opacity-40">
+                                
+                                    <RefreshCwIcon className="h-3.5 w-3.5" />
+                                    Regenerate
+                                  </button>
+                            }
+                              </div>
+                            }
                             </div>
 
                             {msg.role === 'user' &&
-                        <div className="relative shrink-0 mb-1">
+                        <div className="relative mt-0.5 shrink-0">
                                 <button
                             onClick={() =>
                             setActiveUserPopover(
@@ -1179,7 +1484,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                       delay: 0.3,
                       staggerChildren: 0.1
                     }}
-                    className="flex flex-wrap gap-2 mt-3 pl-10">
+                    className="flex flex-wrap gap-2 mt-2 pl-0 sm:pl-11">
                     
                             {suggestions.map((suggestion, i) =>
                     <motion.button
@@ -1211,8 +1516,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                   }
 
                       {isLoading &&
-                  <div className="flex flex-col gap-1.5">
-                        <div className="flex items-end gap-2 justify-start">
+                  <div className="flex items-end gap-2 justify-start">
                           <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10 shrink-0 mb-1">
                             <img
                         src={CITEZEN_LOGO}
@@ -1220,7 +1524,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                         className="h-8 w-8 object-cover rounded-full" />
                       
                           </div>
-                          <div className="bg-dark-800 border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 shadow-md">
+                          <div className="chat-bubble-assistant rounded-2xl rounded-bl-sm px-4 py-3 shadow-md">
                             <div className="flex gap-1">
                               <motion.div
                           animate={{
@@ -1258,18 +1562,6 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                             </div>
                           </div>
                         </div>
-                        {activeSession?.messages.length &&
-                    activeSession.messages[activeSession.messages.length - 1]?.role ===
-                      'user' &&
-                    activeSession.messages[activeSession.messages.length - 1]
-                      ?.attachment &&
-                    <p className="text-[11px] text-gray-500 pl-10 pr-2 leading-snug">
-                            Analyzing attachment with local AI (Ollama). First
-                            response after startup can be slower — streamed text
-                            will appear below.
-                          </p>
-                    }
-                      </div>
                   }
 
                       {/* Streaming message */}
@@ -1297,7 +1589,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                         className="h-8 w-8 object-cover rounded-full" />
                       
                           </div>
-                          <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm bg-dark-800 border border-white/10 text-gray-200 rounded-bl-sm shadow-md">
+                          <div className="chat-bubble-assistant max-w-[85%] rounded-2xl px-4 py-2.5 text-sm rounded-bl-sm shadow-md">
                             <p className="whitespace-pre-wrap leading-relaxed">
                               {streamingContent}
                               <span className="inline-block w-1.5 h-4 bg-purple-400 rounded-sm ml-0.5 animate-pulse align-middle" />
@@ -1307,6 +1599,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                   }
 
                       <div ref={messagesEndRef} />
+                    </div>
                     </div>
 
                     {/* Preview Bar */}
@@ -1335,7 +1628,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                                 </div>
                                 <div className="flex-1">
                                   <p className="text-xs text-gray-400 font-medium mb-1.5">
-                                    {fileProcessHint || 'Processing…'}
+                                    Processing file...
                                   </p>
                                   <div className="h-1 w-full bg-dark-800 rounded-full overflow-hidden">
                                     <motion.div
@@ -1402,14 +1695,24 @@ export function ChatBubble({ user }: ChatBubbleProps) {
 
                     {/* Input Area */}
                     <div className="p-3 border-t border-white/10 bg-dark-800/80 backdrop-blur-md shrink-0">
-                      <div className="relative flex items-end gap-2">
-                        <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 mb-0.5"
-                      title="Attach file">
-                      
-                          <PaperclipIcon className="h-5 w-5" />
-                        </button>
+                      {inlineEditIndex !== null &&
+                      <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-xs text-purple-200">
+                          <span className="truncate">
+                            Editing a message above. Save or cancel in the chat bubble.
+                          </span>
+                          <button
+                          type="button"
+                          onClick={() => {
+                            setInlineEditIndex(null);
+                            setInlineEditDraft('');
+                          }}
+                          className="shrink-0 rounded-lg px-2 py-1 text-xs text-purple-200 hover:bg-white/10">
+                          
+                            Dismiss
+                          </button>
+                        </div>
+                      }
+                      <div className="flex items-center gap-2.5">
                         <input
                       type="file"
                       ref={fileInputRef}
@@ -1422,32 +1725,48 @@ export function ChatBubble({ user }: ChatBubbleProps) {
                       }}
                       accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
                     
-                        <textarea
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Ask about your concerns..."
-                      className="w-full bg-dark-900 border border-white/10 rounded-xl py-2.5 pl-4 pr-12 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 resize-none max-h-32 min-h-[44px] custom-scrollbar"
-                      rows={1}
-                      disabled={isLoading || isStreaming} />
-                    
-                        <button
-                      onClick={() => handleSend()}
-                      disabled={
-                      !input.trim() && !stagedAttachment ||
-                      isLoading ||
-                      isStreaming ||
-                      isProcessingFile
-                      }
-                      className="chat-send-btn absolute right-2 bottom-1.5 p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 hover:shadow-lg hover:shadow-purple-500/30 active:scale-95 disabled:opacity-40 disabled:hover:bg-purple-600 disabled:hover:shadow-none disabled:active:scale-100 transition-all duration-200">
+                        <div
+                      className="chat-composer-pill min-w-0"
+                      title="Type a message. Drag and drop a file onto the chat to attach.">
                       
-                          {isLoading || isStreaming ?
+                          <textarea
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Ask anything"
+                        ref={inputRef}
+                        className="chat-composer-input custom-scrollbar max-h-32"
+                        rows={1}
+                        disabled={isLoading || isStreaming || inlineEditIndex !== null} />
+                        </div>
+                        <button
+                      type="button"
+                      onClick={() => (isStreaming ? stopStreaming() : handleSend())}
+                      disabled={
+                      (!isStreaming && !input.trim() && !stagedAttachment) ||
+                      isLoading ||
+                      isProcessingFile ||
+                      (!isStreaming && inlineEditIndex !== null)
+                      }
+                      title={isStreaming ? 'Stop' : 'Send'}
+                      className={`chat-composer-send disabled:opacity-40 disabled:shadow-none disabled:pointer-events-none ${isStreaming ? 'chat-composer-send-stop' : ''}`}>
+                      
+                          {isLoading ?
                       <Loader2Icon className="h-5 w-5 animate-spin" /> :
 
-                      <SendIcon className="h-5 w-5" />
+                      isStreaming ? <XIcon className="h-5 w-5" /> : <SendIcon className="h-5 w-5" />
                       }
                         </button>
                       </div>
+                      {isStreaming &&
+                      <div className="mt-1.5 text-[11px] text-gray-500 flex items-center justify-end">
+                          Streaming… press{' '}
+                          <span className="mx-1 rounded bg-white/5 px-1.5 py-0.5 border border-white/10 text-gray-300">
+                            Stop
+                          </span>{' '}
+                          to interrupt.
+                        </div>
+                      }
                     </div>
                   </motion.div>
               }
