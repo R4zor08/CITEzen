@@ -1,5 +1,5 @@
+import './loadEnv.js';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from './lib/prisma.js';
@@ -11,11 +11,10 @@ import {
   userToApi
 } from './mappers.js';
 import type { Prisma } from '@prisma/client';
+import { registerGabaiRoutes } from './gabaiChat.js';
 
 type Role = 'student' | 'staff' | 'admin';
 type Priority = 'low' | 'medium' | 'high' | 'urgent';
-
-dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -27,6 +26,8 @@ app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? '15mb' }));
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'citezen-api' });
 });
+
+registerGabaiRoutes(app);
 
 /** Login: students use Student ID; staff/admin use email */
 app.post('/api/auth/login', async (req, res) => {
@@ -466,6 +467,17 @@ app.post('/api/notifications/mark-all-read', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`citezen API listening on http://localhost:${PORT}`);
+});
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `[citezen-api] Port ${PORT} is already in use. Close the other terminal running the API, or run: netstat -ano | findstr :${PORT} then taskkill /PID <pid> /F. Or set PORT in server/.env to a free port.`
+    );
+  } else {
+    console.error('[citezen-api] Server failed to start:', err.message);
+  }
+  process.exit(1);
 });

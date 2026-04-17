@@ -101,6 +101,19 @@
   .citezen-safe-bottom {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
+  /* Concern detail modal — shared micro-labels + depth */
+  .citezen-detail-label {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .citezen-concern-modal-shell {
+    box-shadow:
+      0 25px 80px -16px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(168, 85, 247, 0.12);
+  }
 }
 
 html {

@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '../types';
 import { toast } from 'sonner';
+import { getApiBase } from '../lib/api';
+import { optimizeChatImageFromDataUrl } from '../lib/optimizeChatImage';
 import {
   MessageCircleIcon,
   XIcon,
@@ -45,6 +47,15 @@ interface ChatBubbleProps {
   user: User;
 }
 const CITEZEN_LOGO = "/Gemini_Generated_Image_u7mgetu7mgetu7mg.png";
+
+/** Shown when chat errors unless the server already included the same guidance */
+const GABAI_OLLAMA_VS_GROQ_HELP = `Image and document analysis runs on your computer through Ollama (not Groq).
+
+• Install and open Ollama (https://ollama.com)
+• Run: ollama pull llava (and ollama pull llama3.2 if your app expects both; or set OLLAMA_TEXT_MODEL=llava in server/.env if you only have llava)
+• Restart the CITEzen API (npm run server:dev)
+
+Text-only chat still works with Groq without Ollama.`;
 
 const formatFileSize = (bytes: number) => {
   if (bytes === 0) return '0 Bytes';
@@ -141,6 +152,7 @@ export function ChatBubble({ user }: ChatBubbleProps) {
     null
   );
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [fileProcessHint, setFileProcessHint] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   // History UI State
@@ -259,22 +271,45 @@ export function ChatBubble({ user }: ChatBubbleProps) {
       return;
     }
     setIsProcessingFile(true);
+    setFileProcessHint('Reading file…');
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setTimeout(() => {
-        setStagedAttachment({
-          type: isImage ? 'image' : 'file',
-          name: file.name,
-          size: file.size,
-          mimeType: file.type,
-          dataUrl: e.target?.result as string
+    reader.onload = async (e) => {
+      const raw = e.target?.result as string;
+      try {
+        if (isImage) {
+          setFileProcessHint('Shrinking image for faster analysis…');
+          const opt = await optimizeChatImageFromDataUrl(raw, file.name);
+          setStagedAttachment({
+            type: 'image',
+            name: opt.name,
+            size: opt.size,
+            mimeType: opt.mimeType,
+            dataUrl: opt.dataUrl
+          });
+        } else {
+          setStagedAttachment({
+            type: 'file',
+            name: file.name,
+            size: file.size,
+            mimeType: file.type,
+            dataUrl: raw
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Could not process image', {
+          description:
+            err instanceof Error ? err.message : 'Try a smaller JPEG or PNG.'
         });
+      } finally {
         setIsProcessingFile(false);
-      }, 600);
+        setFileProcessHint('');
+      }
     };
     reader.onerror = () => {
       toast.error('Error reading file');
       setIsProcessingFile(false);
+      setFileProcessHint('');
     };
     reader.readAsDataURL(file);
   };
@@ -337,51 +372,33 @@ export function ChatBubble({ user }: ChatBubbleProps) {
     );
     setIsLoading(true);
     setStreamingContent('');
-    const groqKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (!groqKey) {
-      toast.error('Chat is not configured: set VITE_GROQ_API_KEY in .env');
-      setIsLoading(false);
-      return;
-    }
+    const apiBase = getApiBase();
+    const payloadMessages = newMessages.slice(-20).map((m) => ({
+      role: m.role,
+      content: m.content,
+      ...(m.attachment ? { attachment: m.attachment } : {})
+    }));
     try {
-      const contextMessages = newMessages.slice(-20).map((m) => {
-        let content = m.content;
-        if (m.attachment) {
-          const attachmentNote = `[User attached a ${m.attachment.type}: ${m.attachment.name} (${formatFileSize(m.attachment.size)})]`;
-          content = content ? `${content}\n${attachmentNote}` : attachmentNote;
-        }
-        return {
-          role: m.role,
-          content
-        };
+      const response = await fetch(`${apiBase}/api/gabai/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user: { name: user.name, role: user.role },
+          messages: payloadMessages
+        })
       });
-      const response = await fetch(
-        'https://api.groq.com/openai/v1/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${groqKey}`
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-            {
-              role: 'system',
-              content: `You are GabAI, the friendly AI assistant for the CITEzen campus concern management system at NEMSU (North Eastern Mindanao State University). Your name "GabAI" comes from "Gabay" (guide in Filipino/Bisaya) + AI. You help students and staff with questions about submitting concerns, tracking status, understanding the system, and general campus inquiries. Be friendly, concise, and helpful. If you don't know something specific about their account, suggest they check the relevant dashboard section. The current user is ${user.name} (${user.role}). If the user attaches a file or image, acknowledge it based on the description provided in brackets.
-
-IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual. You can understand and respond in English, Tagalog (Filipino), and Bisaya (Cebuano). Always reply in the same language the user is speaking. If the user writes in Tagalog, respond in Tagalog. If the user writes in Bisaya/Cebuano, respond in Bisaya/Cebuano. If the user writes in English, respond in English. If the user mixes languages (Taglish, Bislish), match their style naturally. Be natural and conversational in all languages.`
-            },
-            ...contextMessages],
-
-            temperature: 0.7,
-            max_tokens: 500,
-            stream: true
-          })
+      if (!response.ok) {
+        let msg = `Chat failed (${response.status})`;
+        try {
+          const j = (await response.json()) as { error?: string };
+          if (j.error) msg = j.error;
+        } catch {
+          /* keep msg */
         }
-      );
-      if (!response.ok) throw new Error('Failed to fetch response');
-      // Switch from loading dots to streaming mode
+        throw new Error(msg);
+      }
       setIsLoading(false);
       setIsStreaming(true);
       const reader = response.body?.getReader();
@@ -389,16 +406,19 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual. You can understand and re
       let fullContent = '';
       if (!reader) throw new Error('No response body');
       let streamDone = false;
+      let sseLineBuf = '';
       while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) {
           streamDone = true;
           break;
         }
-        const chunk = decoder.decode(value, {
+        sseLineBuf += decoder.decode(value, {
           stream: true
         });
-        const lines = chunk.split('\n').filter((line) => line.trim() !== '');
+        const rawLines = sseLineBuf.split('\n');
+        sseLineBuf = rawLines.pop() ?? '';
+        const lines = rawLines.filter((line) => line.trim() !== '');
         for (const line of lines) {
           if (line === 'data: [DONE]') continue;
           if (!line.startsWith('data: ')) continue;
@@ -436,6 +456,15 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual. You can understand and re
       setStreamingContent('');
     } catch (error) {
       console.error('Chat error:', error);
+      const detail =
+      error instanceof Error ? error.message : 'Please try again later.';
+      const serverIncludedGuide =
+        detail.includes('Image and document analysis runs on your computer') ||
+        detail.includes('Text-only chat still works with Groq without Ollama');
+      const followUpHelp = serverIncludedGuide ? '' : `\n\n${GABAI_OLLAMA_VS_GROQ_HELP}`;
+      toast.error('GabAI unavailable', {
+        description: detail.slice(0, 280)
+      });
       setIsStreaming(false);
       setStreamingContent('');
       setSessions((prev) =>
@@ -447,8 +476,7 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual. You can understand and re
         ...s.messages,
         {
           role: 'assistant',
-          content:
-          'Sorry, I encountered an error connecting to the server. Please try again later.'
+          content: `Sorry — ${detail}${followUpHelp}`
         }],
 
         updatedAt: new Date().toISOString()
@@ -1183,7 +1211,8 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual. You can understand and re
                   }
 
                       {isLoading &&
-                  <div className="flex items-end gap-2 justify-start">
+                  <div className="flex flex-col gap-1.5">
+                        <div className="flex items-end gap-2 justify-start">
                           <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10 shrink-0 mb-1">
                             <img
                         src={CITEZEN_LOGO}
@@ -1229,6 +1258,18 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual. You can understand and re
                             </div>
                           </div>
                         </div>
+                        {activeSession?.messages.length &&
+                    activeSession.messages[activeSession.messages.length - 1]?.role ===
+                      'user' &&
+                    activeSession.messages[activeSession.messages.length - 1]
+                      ?.attachment &&
+                    <p className="text-[11px] text-gray-500 pl-10 pr-2 leading-snug">
+                            Analyzing attachment with local AI (Ollama). First
+                            response after startup can be slower — streamed text
+                            will appear below.
+                          </p>
+                    }
+                      </div>
                   }
 
                       {/* Streaming message */}
@@ -1294,7 +1335,7 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual. You can understand and re
                                 </div>
                                 <div className="flex-1">
                                   <p className="text-xs text-gray-400 font-medium mb-1.5">
-                                    Processing file...
+                                    {fileProcessHint || 'Processing…'}
                                   </p>
                                   <div className="h-1 w-full bg-dark-800 rounded-full overflow-hidden">
                                     <motion.div
