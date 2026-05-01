@@ -86,7 +86,7 @@ export function DashboardLayout({
                 }}>
                 
                 {activeTab === 'notifications' ?
-                <div className="w-full min-w-0 max-w-full flex flex-col items-stretch sm:items-center px-0 sm:px-1 lg:px-2">
+                <div className="w-full min-w-0 max-w-full">
                     <NotificationPanel
                     notifications={concernsData.notifications}
                     onMarkRead={concernsData.markNotificationRead}

@@ -47,7 +47,7 @@ export function NotificationPanel({
   const unreadCount = notifications.filter((n) => !n.read).length;
   return (
     <div
-      className="notification-panel-shell notification-panel w-full max-w-full sm:max-w-2xl lg:max-w-3xl mx-auto min-w-0 overflow-hidden animate-fade-in flex flex-col glass-panel border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl min-h-[min(58dvh,480px)] sm:min-h-[min(60vh,560px)] max-h-[min(calc(100dvh-6.5rem),720px)] sm:max-h-[min(calc(100vh-10rem),800px)]">
+      className="notification-panel-shell notification-panel w-full max-w-full min-w-0 overflow-hidden animate-fade-in flex flex-col glass-panel border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl min-h-[min(58dvh,480px)] sm:min-h-[min(60vh,560px)] max-h-[min(calc(100dvh-6.5rem),720px)] sm:max-h-[min(calc(100vh-10rem),800px)]">
       <div className="notification-panel-header flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 sm:p-5 lg:p-6 border-b border-white/10 bg-dark-800/80 shrink-0">
         <div className="flex items-start sm:items-center gap-3 min-w-0">
           <div className="notification-panel-icon-wrap h-11 w-11 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0">
