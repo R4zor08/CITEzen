@@ -81,7 +81,7 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
     (t) => t.category === selectedCategory
   );
   return (
-    <div className="glass-panel p-4 sm:p-6 md:p-8 lg:p-10 animate-fade-in max-w-3xl mx-auto w-full rounded-2xl">
+    <div className="glass-panel p-4 sm:p-6 md:p-8 lg:p-10 animate-fade-in max-w-full w-full rounded-2xl">
       {/* Progress Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
@@ -112,7 +112,7 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
           <h3 className="text-lg font-medium text-white mb-4">
             What type of concern do you have?
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {categories.map((cat) => {
             const Icon = iconMap[cat.icon] || AlertCircleIcon;
             return (
@@ -207,7 +207,7 @@ export function ConcernForm({ user, onSubmit, onCancel }: ConcernFormProps) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Auto-filled Student Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
               <div>
                 <span className="citezen-label text-xs !text-gray-500">
                   Student Name
