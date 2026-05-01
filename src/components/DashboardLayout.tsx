@@ -90,7 +90,8 @@ export function DashboardLayout({
                     <NotificationPanel
                     notifications={concernsData.notifications}
                     onMarkRead={concernsData.markNotificationRead}
-                    onMarkAllRead={concernsData.markAllNotificationsRead} />
+                    onMarkAllRead={concernsData.markAllNotificationsRead}
+                    onClearAll={concernsData.clearAllNotifications} />
                   
                   </div> :
 

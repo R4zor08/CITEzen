@@ -476,6 +476,21 @@ app.post('/api/notifications/mark-all-read', async (req, res) => {
   }
 });
 
+app.delete('/api/notifications', async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    if (typeof userId !== 'string' || !userId) {
+      res.status(400).json({ error: 'userId query param is required' });
+      return;
+    }
+    const r = await prisma.notification.deleteMany({ where: { userId } });
+    res.json({ ok: true, count: r.count });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to clear notifications' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`citezen API listening on http://localhost:${PORT}`);
 });

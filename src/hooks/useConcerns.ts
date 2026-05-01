@@ -169,6 +169,22 @@ export function useConcerns(currentUser: User | null) {
     }
   };
 
+  const clearAllNotifications = async () => {
+    if (!currentUser) return;
+    try {
+      await apiJson(
+        `/api/notifications?userId=${encodeURIComponent(currentUser.id)}`,
+        { method: 'DELETE' }
+      );
+      await refreshNotifications();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'Failed to clear notifications'
+      );
+      throw e;
+    }
+  };
+
   const getByStudent = (studentId: string) =>
     concerns.filter((c) => c.studentId === studentId);
   const getByDepartment = (dept: string) =>
@@ -194,6 +210,7 @@ export function useConcerns(currentUser: User | null) {
     forwardConcern,
     markNotificationRead,
     markAllNotificationsRead,
+    clearAllNotifications,
     getByStudent,
     getByDepartment,
     getAssignedTo,

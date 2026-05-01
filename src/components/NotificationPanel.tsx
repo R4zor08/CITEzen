@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Notification } from '../types';
 import {
   BellIcon,
@@ -5,18 +6,38 @@ import {
   CheckCircle2Icon,
   MessageSquareIcon,
   AlertCircleIcon,
-  InfoIcon } from
+  InfoIcon,
+  Trash2Icon } from
 'lucide-react';
+import { toast } from 'sonner';
+import { ClearNotificationsModal } from './ClearNotificationsModal';
 interface NotificationPanelProps {
   notifications: Notification[];
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
+  onClearAll: () => Promise<void> | void;
 }
 export function NotificationPanel({
   notifications,
   onMarkRead,
-  onMarkAllRead
+  onMarkAllRead,
+  onClearAll
 }: NotificationPanelProps) {
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleConfirmClear = async () => {
+    setIsClearing(true);
+    try {
+      await onClearAll();
+      toast.success('Notifications cleared');
+      setConfirmingClear(false);
+    } catch {
+      /* hook already shows error toast */
+    } finally {
+      setIsClearing(false);
+    }
+  };
   const getIcon = (type: string) => {
     switch (type) {
       case 'status_change':
@@ -69,14 +90,23 @@ export function NotificationPanel({
             </p>
           </div>
         </div>
-        {unreadCount > 0 &&
+        {unreadCount > 0 ?
         <button
           type="button"
           onClick={() => void onMarkAllRead()}
           className="notification-mark-all w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm font-medium px-4 py-2.5 rounded-xl border flex items-center justify-center gap-2 transition-colors touch-manipulation shrink-0">
           
             <CheckIcon className="h-4 w-4 shrink-0" /> Mark all read
-          </button>
+          </button> :
+        notifications.length > 0 ?
+        <button
+          type="button"
+          onClick={() => setConfirmingClear(true)}
+          className="w-full sm:w-auto min-h-[44px] sm:min-h-0 text-sm font-medium px-4 py-2.5 rounded-xl border border-red-400/30 text-red-300 hover:text-red-200 hover:bg-red-500/10 hover:border-red-400/50 flex items-center justify-center gap-2 transition-colors touch-manipulation shrink-0">
+          
+            <Trash2Icon className="h-4 w-4 shrink-0" /> Clear notifications
+          </button> :
+        null
         }
       </div>
 
@@ -131,6 +161,16 @@ export function NotificationPanel({
         )
         }
       </div>
+
+      <ClearNotificationsModal
+        isOpen={confirmingClear}
+        isLoading={isClearing}
+        count={notifications.length}
+        onClose={() => {
+          if (!isClearing) setConfirmingClear(false);
+        }}
+        onConfirm={handleConfirmClear} />
+    
     </div>);
 
 }
