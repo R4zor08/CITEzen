@@ -15,8 +15,6 @@ interface DashboardLayoutProps {
   onNavigate: (page: string) => void;
   concernsData: any;
   children: ReactNode;
-  /** Student sidebar “GabAI” — opens in-app chat (parent mounts `ChatBubble`). */
-  onOpenGabAi?: () => void;
 }
 export function DashboardLayout({
   user,
@@ -26,8 +24,7 @@ export function DashboardLayout({
   onLogout,
   onNavigate,
   concernsData,
-  children,
-  onOpenGabAi
+  children
 }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const stored = localStorage.getItem('citezen_sidebar_collapsed');
@@ -56,7 +53,6 @@ export function DashboardLayout({
         onCloseMobile={() => setIsMobileOpen(false)}
         onLogout={() => setShowLogoutModal(true)}
         unreadCount={concernsData.unreadCount}
-        onOpenGabAi={role === 'student' ? onOpenGabAi : undefined}
       />
       
 

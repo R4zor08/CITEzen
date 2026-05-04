@@ -44,7 +44,7 @@ interface ChatSession {
 }
 interface ChatBubbleProps {
   user: User;
-  /** Parent-controlled open state (e.g. sidebar “GabAI”). Omit for bubble-only control. */
+  /** Parent-controlled open state. Omit for FAB-only control. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Host fills the window (e.g. #gabai route); panel is always visible, no FAB. */

@@ -13,8 +13,7 @@ import {
   ChevronLeftIcon,
   XIcon,
   LogOutIcon,
-  BellIcon,
-  SparklesIcon } from
+  BellIcon } from
 'lucide-react';
 interface SidebarProps {
   user: User;
@@ -27,8 +26,6 @@ interface SidebarProps {
   onCloseMobile: () => void;
   onLogout: () => void;
   unreadCount?: number;
-  /** Opens in-app GabAI for students (does not change active tab). */
-  onOpenGabAi?: () => void;
 }
 export function Sidebar({
   user,
@@ -40,8 +37,7 @@ export function Sidebar({
   isMobileOpen,
   onCloseMobile,
   onLogout,
-  unreadCount = 0,
-  onOpenGabAi
+  unreadCount = 0
 }: SidebarProps) {
   const studentTabs = [
   {
@@ -63,11 +59,6 @@ export function Sidebar({
     id: 'notifications',
     label: 'Notifications',
     icon: BellIcon
-  },
-  {
-    id: 'gabai',
-    label: 'GabAI',
-    icon: SparklesIcon
   },
   {
     id: 'profile',
@@ -161,19 +152,13 @@ export function Sidebar({
   <nav className="flex-1 space-y-1 mt-4 px-3">
       {tabs.map((tab) => {
       const Icon = tab.icon;
-      const isGabAi = tab.id === 'gabai';
-      const isActive = activeTab === tab.id && !isGabAi;
+      const isActive = activeTab === tab.id;
       const showLabel = isMobile || !isCollapsed;
       const isNotification = tab.id === 'notifications';
       return (
         <button
           key={tab.id}
           onClick={() => {
-            if (isGabAi) {
-              onOpenGabAi?.();
-              if (isMobile) onCloseMobile();
-              return;
-            }
             onTabChange(tab.id);
             if (isMobile) onCloseMobile();
           }}

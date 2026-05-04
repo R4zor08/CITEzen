@@ -136,8 +136,8 @@ export function App() {
             GabAI is for signed-in students
           </p>
           <p className="text-sm text-gray-400 max-w-sm mb-6">
-            Sign in as a student from the main CITEzen window, then open GabAI from
-            the sidebar or use this window after signing in.
+            Sign in as a student from the main CITEzen window, then tap the floating
+            GabAI bubble on your dashboard, or use this window after signing in.
           </p>
           <button
             type="button"
