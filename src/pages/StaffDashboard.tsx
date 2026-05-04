@@ -36,13 +36,9 @@ export function StaffDashboard({
   const [filterStatus, setFilterStatus] = useState<ConcernStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { concerns, updateStatus, addComment, forwardConcern } = concernsData;
-  // Filter concerns for this staff's department
-  const deptConcerns = concerns.filter(
-    (c: any) => c.department === user.department
-  );
-  const assignedConcerns = deptConcerns.filter(
-    (c: any) => c.assignedTo === user.id
-  );
+  // Staff sees department concerns plus any concerns assigned to them (even cross-department).
+  const deptConcerns = concerns.filter((c: any) => c.department === user.department);
+  const assignedConcerns = concerns.filter((c: any) => c.assignedTo === user.id);
   const displayConcerns =
   activeTab === 'assigned' ? assignedConcerns : deptConcerns;
   const filteredConcerns = displayConcerns.filter((c: any) => {

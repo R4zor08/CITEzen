@@ -304,6 +304,15 @@ app.patch('/api/concerns/:id', async (req, res) => {
       department: string;
     }>;
 
+    const prev = await prisma.concern.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, title: true, studentId: true, assignedToId: true }
+    });
+    if (!prev) {
+      res.status(404).json({ error: 'Concern not found' });
+      return;
+    }
+
     const data: Record<string, unknown> = {};
     if (b.status !== undefined) data.status = statusFromApi(b.status);
     if (b.priority !== undefined) data.priority = b.priority;
@@ -326,6 +335,20 @@ app.patch('/api/concerns/:id', async (req, res) => {
           concernId: c.id
         }
       });
+    }
+
+    if (b.assignedTo !== undefined && b.assignedTo !== prev.assignedToId) {
+      if (b.assignedTo) {
+        await prisma.notification.create({
+          data: {
+            userId: b.assignedTo,
+            title: 'New Assignment',
+            message: `You have been assigned "${c.title}".`,
+            type: 'assignment',
+            concernId: c.id
+          }
+        });
+      }
     }
 
     res.json(concernToApi(c));

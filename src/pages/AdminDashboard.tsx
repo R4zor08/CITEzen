@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, ConcernStatus } from '../types';
 import { departmentsList } from '../data/mockData';
@@ -123,7 +123,9 @@ export function AdminDashboard({
     );
   }, [localDepartments]);
   const [searchQuery, setSearchQuery] = useState('');
-  const { concerns, updateStatus, addComment, forwardConcern } = concernsData;
+  const { concerns, updateStatus, addComment, forwardConcern, assignConcern } =
+    concernsData;
+  const [assignDraft, setAssignDraft] = useState<Record<string, string>>({});
   const filteredConcerns = concerns.filter((c: any) => {
     const matchesStatus = filterStatus === 'all' || c.status === filterStatus;
     const matchesSearch =
@@ -133,6 +135,12 @@ export function AdminDashboard({
     c.department.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  const staffUsers = registeredUsers.filter((u: any) => u.role === 'staff');
+  const staffNameById = useMemo(
+    () => new Map<string, string>(staffUsers.map((u: any) => [u.id, u.name])),
+    [staffUsers]
+  );
   const stats = {
     total: concerns.length,
     resolved: concerns.filter((c: any) => c.status === 'resolved').length,
@@ -394,10 +402,102 @@ export function AdminDashboard({
                 damping: 20
               }}>
               
-                    <ConcernCard
-                concern={concern}
-                onClick={() => setSelectedConcernId(concern.id)}
-                showStudent={true} />
+                    <div className="flex flex-col lg:flex-row lg:items-stretch gap-3">
+                      <div className="flex-1 min-w-0">
+                        <ConcernCard
+                          concern={concern}
+                          onClick={() => setSelectedConcernId(concern.id)}
+                          showStudent={true}
+                        />
+                      </div>
+
+                      <div className="glass-panel p-3 rounded-2xl border border-white/10 shrink-0 lg:w-[320px]">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="text-xs font-medium text-gray-300">
+                            Assign to staff
+                          </div>
+                          <div className="text-[11px] text-gray-500 truncate">
+                            {concern.assignedTo
+                              ? `Assigned: ${staffNameById.get(concern.assignedTo) || 'Unknown'}`
+                              : 'Unassigned'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={assignDraft[concern.id] ?? concern.assignedTo ?? ''}
+                            onChange={(e) =>
+                              setAssignDraft((prev) => ({
+                                ...prev,
+                                [concern.id]: e.target.value
+                              }))
+                            }
+                            className="flex-1 min-w-0 bg-dark-800 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all appearance-none"
+                            title="Select staff to assign">
+                            <option value="">Select staff…</option>
+                            {staffUsers
+                              .filter((u: any) => u.department === concern.department)
+                              .map((u: any) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.name}
+                                </option>
+                              ))}
+                            {staffUsers.some((u: any) => u.department === concern.department) ? (
+                              <option disabled value="__divider__">
+                                ──────────
+                              </option>
+                            ) : null}
+                            {staffUsers
+                              .filter((u: any) => u.department !== concern.department)
+                              .map((u: any) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.name} ({u.department || 'No dept'})
+                                </option>
+                              ))}
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const staffId = assignDraft[concern.id];
+                              if (!staffId) {
+                                toast.error('Select a staff member first.');
+                                return;
+                              }
+                              try {
+                                await assignConcern(concern.id, staffId);
+                                toast.success('Assigned successfully.');
+                              } catch {
+                                /* useConcerns already toasts */
+                              }
+                            }}
+                            className="px-3 py-2 rounded-xl bg-purple-600 text-white text-xs font-medium hover:bg-purple-500 transition-colors">
+                            Assign
+                          </button>
+                        </div>
+
+                        {concern.assignedTo && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await assignConcern(concern.id, null);
+                                setAssignDraft((prev) => {
+                                  const next = { ...prev };
+                                  delete next[concern.id];
+                                  return next;
+                                });
+                                toast.success('Unassigned.');
+                              } catch {
+                                /* useConcerns already toasts */
+                              }
+                            }}
+                            className="mt-2 w-full px-3 py-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 text-xs transition-colors">
+                            Clear assignment
+                          </button>
+                        )}
+                      </div>
+                    </div>
               
                   </motion.div>
             )}

@@ -32,22 +32,40 @@ export function useConcerns(currentUser: User | null) {
       return;
     }
 
-    let path: string;
     if (currentUser.role === 'admin') {
-      path = '/api/concerns';
-    } else if (currentUser.role === 'student') {
-      path = `/api/concerns?studentId=${encodeURIComponent(currentUser.id)}`;
-    } else {
-      const d = currentUser.department?.trim();
-      if (!d) {
-        setConcerns([]);
-        return;
-      }
-      path = `/api/concerns?department=${encodeURIComponent(d)}`;
+      const list = await apiJson<Concern[]>('/api/concerns');
+      setConcerns(list);
+      return;
     }
 
-    const list = await apiJson<Concern[]>(path);
-    setConcerns(list);
+    if (currentUser.role === 'student') {
+      const list = await apiJson<Concern[]>(
+        `/api/concerns?studentId=${encodeURIComponent(currentUser.id)}`
+      );
+      setConcerns(list);
+      return;
+    }
+
+    const d = currentUser.department?.trim();
+    if (!d) {
+      setConcerns([]);
+      return;
+    }
+
+    const [deptList, assignedList] = await Promise.all([
+      apiJson<Concern[]>(`/api/concerns?department=${encodeURIComponent(d)}`),
+      apiJson<Concern[]>(
+        `/api/concerns?assignedToId=${encodeURIComponent(currentUser.id)}`
+      )
+    ]);
+
+    const byId = new Map<string, Concern>();
+    for (const c of [...deptList, ...assignedList]) byId.set(c.id, c);
+    const merged = [...byId.values()].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+
+    setConcerns(merged);
   }, [currentUser]);
 
   useEffect(() => {
@@ -145,6 +163,19 @@ export function useConcerns(currentUser: User | null) {
     }
   };
 
+  const assignConcern = async (concernId: string, staffId: string | null) => {
+    try {
+      await apiJson<Concern>(`/api/concerns/${concernId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ assignedTo: staffId })
+      });
+      await Promise.all([refreshConcerns(), refreshNotifications()]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to assign concern');
+      throw e;
+    }
+  };
+
   const markNotificationRead = async (id: string) => {
     try {
       await apiJson(`/api/notifications/${id}/read`, { method: 'PATCH' });
@@ -208,6 +239,7 @@ export function useConcerns(currentUser: User | null) {
     updateStatus,
     addComment,
     forwardConcern,
+    assignConcern,
     markNotificationRead,
     markAllNotificationsRead,
     clearAllNotifications,
