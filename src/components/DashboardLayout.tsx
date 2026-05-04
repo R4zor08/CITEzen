@@ -6,7 +6,6 @@ import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { LogoutModal } from './LogoutModal';
 import { NotificationPanel } from './NotificationPanel';
-import { ChatBubble } from './ChatBubble';
 interface DashboardLayoutProps {
   user: User;
   role: Role;
@@ -16,6 +15,8 @@ interface DashboardLayoutProps {
   onNavigate: (page: string) => void;
   concernsData: any;
   children: ReactNode;
+  /** Student sidebar “GabAI” — opens in-app chat (parent mounts `ChatBubble`). */
+  onOpenGabAi?: () => void;
 }
 export function DashboardLayout({
   user,
@@ -25,7 +26,8 @@ export function DashboardLayout({
   onLogout,
   onNavigate,
   concernsData,
-  children
+  children,
+  onOpenGabAi
 }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const stored = localStorage.getItem('citezen_sidebar_collapsed');
@@ -53,7 +55,9 @@ export function DashboardLayout({
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
         onLogout={() => setShowLogoutModal(true)}
-        unreadCount={concernsData.unreadCount} />
+        unreadCount={concernsData.unreadCount}
+        onOpenGabAi={role === 'student' ? onOpenGabAi : undefined}
+      />
       
 
       {/* Main Content Area */}
@@ -101,9 +105,6 @@ export function DashboardLayout({
             </AnimatePresence>
           </div>
         </main>
-
-        {/* AI Chat Bubble — only for students */}
-        {role === 'student' && <ChatBubble user={user} />}
       </div>
 
       <LogoutModal

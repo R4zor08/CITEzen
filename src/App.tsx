@@ -9,8 +9,14 @@ import { RegisterPage } from './pages/RegisterPage';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { StaffDashboard } from './pages/StaffDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { ChatBubble } from './components/ChatBubble';
 import { Loader2Icon } from 'lucide-react';
 import { Toaster } from 'sonner';
+
+function isGabAiHash(): boolean {
+  const raw = window.location.hash.replace(/^#/, '').replace(/^\//, '');
+  return raw === 'gabai';
+}
 type Page =
 'landing' |
 'login' |
@@ -31,6 +37,12 @@ export function App() {
   const themeValue = useThemeProvider();
   const concernsData = useConcerns(user);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
+  const [gabAiFromHash, setGabAiFromHash] = useState(isGabAiHash);
+  useEffect(() => {
+    const onHashChange = () => setGabAiFromHash(isGabAiHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
   // Handle routing based on auth state
   useEffect(() => {
     if (!isLoading) {
@@ -81,28 +93,68 @@ export function App() {
       </div>);
 
   }
+
+  const toaster = (
+    <Toaster
+      theme={themeValue.isDark ? 'dark' : 'light'}
+      position="top-center"
+      toastOptions={{
+        style: themeValue.isDark
+          ? {
+              background: '#1a1a2e',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#e5e7eb'
+            }
+          : {
+              background: '#ffffff',
+              border: '1px solid rgba(0,0,0,0.1)',
+              color: '#0f172a',
+              boxShadow:
+                '0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px rgba(0,0,0,0.08)'
+            }
+      }}
+    />
+  );
+
+  if (gabAiFromHash && user?.role === 'student') {
+    return (
+      <ThemeContext.Provider value={themeValue}>
+        <div className="min-h-screen bg-dark-900 text-gray-200 font-sans selection:bg-purple-500/30 h-screen overflow-hidden flex flex-col">
+          {toaster}
+          <ChatBubble user={user} isStandaloneWindow />
+        </div>
+      </ThemeContext.Provider>
+    );
+  }
+
+  if (gabAiFromHash && (!user || user.role !== 'student')) {
+    return (
+      <ThemeContext.Provider value={themeValue}>
+        <div className="min-h-screen bg-dark-900 text-gray-200 font-sans flex flex-col items-center justify-center p-6 text-center">
+          {toaster}
+          <p className="text-white font-medium mb-2">
+            GabAI is for signed-in students
+          </p>
+          <p className="text-sm text-gray-400 max-w-sm mb-6">
+            Sign in as a student from the main CITEzen window, then open GabAI from
+            the sidebar or use this window after signing in.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.close()}
+            className="px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/15 text-sm">
+            Close window
+          </button>
+        </div>
+      </ThemeContext.Provider>
+    );
+  }
+
   // Render current page
   return (
     <ThemeContext.Provider value={themeValue}>
       <div className="min-h-screen bg-dark-900 text-gray-200 font-sans selection:bg-purple-500/30">
-        <Toaster
-          theme={themeValue.isDark ? 'dark' : 'light'}
-          position="top-center"
-          toastOptions={{
-            style: themeValue.isDark
-              ? {
-                  background: '#1a1a2e',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#e5e7eb'
-                }
-              : {
-                  background: '#ffffff',
-                  border: '1px solid rgba(0,0,0,0.1)',
-                  color: '#0f172a',
-                  boxShadow:
-                    '0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px rgba(0,0,0,0.08)'
-                }
-          }} />
+        {toaster}
         
         {currentPage === 'landing' &&
         <LandingPage onNavigate={handleNavigate} />

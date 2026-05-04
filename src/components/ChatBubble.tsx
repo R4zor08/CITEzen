@@ -44,6 +44,11 @@ interface ChatSession {
 }
 interface ChatBubbleProps {
   user: User;
+  /** Parent-controlled open state (e.g. sidebar “GabAI”). Omit for bubble-only control. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Host fills the window (e.g. #gabai route); panel is always visible, no FAB. */
+  isStandaloneWindow?: boolean;
 }
 const CITEZEN_LOGO = "/Gemini_Generated_Image_u7mgetu7mgetu7mg.png";
 
@@ -82,8 +87,26 @@ function formatAssistantReply(text: string): string {
   return s;
 }
 
-export function ChatBubble({ user }: ChatBubbleProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function ChatBubble({
+  user,
+  open: openControlled,
+  onOpenChange,
+  isStandaloneWindow = false
+}: ChatBubbleProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen =
+    isStandaloneWindow ? true : openControlled ?? internalOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (isStandaloneWindow) {
+        if (!next) window.close();
+        return;
+      }
+      onOpenChange?.(next);
+      if (openControlled === undefined) setInternalOpen(next);
+    },
+    [isStandaloneWindow, onOpenChange, openControlled]
+  );
   const [view, setView] = useState<'chat' | 'history'>('chat');
   const createInitialGreeting = (): Message => ({
     role: 'assistant',
@@ -204,6 +227,16 @@ export function ChatBubble({ user }: ChatBubbleProps) {
   isProcessingFile,
   streamingContent]
   );
+
+  useEffect(() => {
+    if (isStandaloneWindow) return;
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen, isStandaloneWindow]);
   // --- Chat Management Actions ---
   const handleNewChat = () => {
     const newSession = createNewSession();
@@ -786,25 +819,26 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual (English, Tagalog/Filipino
         <motion.div
           initial={{
             opacity: 0,
-            scale: 0.8,
-            y: 20
+            y: 12
           }}
           animate={{
             opacity: 1,
-            scale: 1,
             y: 0
           }}
           exit={{
             opacity: 0,
-            scale: 0.8,
-            y: 20
+            y: 12
           }}
           transition={{
             type: 'spring',
-            damping: 25,
-            stiffness: 300
+            damping: 28,
+            stiffness: 320
           }}
-          className="fixed bottom-24 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[380px] h-[600px] max-h-[calc(100vh-8rem)] z-50 glass-panel flex flex-col overflow-hidden shadow-2xl shadow-purple-500/20 border-purple-500/30 origin-bottom-right">
+          className={
+            isStandaloneWindow
+              ? 'h-full w-full min-h-0 max-h-full z-50 glass-panel flex flex-col overflow-hidden shadow-2xl shadow-purple-500/20 border-purple-500/30 rounded-none'
+              : 'fixed inset-0 z-[60] h-[100dvh] min-h-[100dvh] w-full max-w-none glass-panel flex flex-col overflow-hidden shadow-2xl shadow-purple-500/20 border-white/10 rounded-none pt-[env(safe-area-inset-top,0px)] isolate'
+          }>
           
             {/* Confirmation Modal */}
             <AnimatePresence>
@@ -901,7 +935,7 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual (English, Tagalog/Filipino
                         </h3>
                       </div>
                       <button
-                    onClick={() => setIsOpen(false)}
+                    onClick={() => setOpen(false)}
                     className="p-1.5 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
                     
                         <XIcon className="h-5 w-5" />
@@ -1156,7 +1190,7 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual (English, Tagalog/Filipino
                         </button>
                         <div className="w-px h-4 bg-white/10 mx-1" />
                         <button
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => setOpen(false)}
                       className="p-1.5 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
                       
                           <XIcon className="h-5 w-5" />
@@ -1694,7 +1728,7 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual (English, Tagalog/Filipino
                     </AnimatePresence>
 
                     {/* Input Area */}
-                    <div className="p-3 border-t border-white/10 bg-dark-800/80 backdrop-blur-md shrink-0">
+                    <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] border-t border-white/10 bg-dark-800/80 backdrop-blur-md shrink-0">
                       {inlineEditIndex !== null &&
                       <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-xs text-purple-200">
                           <span className="truncate">
@@ -1776,40 +1810,19 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual (English, Tagalog/Filipino
         }
       </AnimatePresence>
 
-      {/* Floating Button */}
+      {/* Floating Button — hidden while full-screen chat is open */}
+      {!isStandaloneWindow && !isOpen &&
       <motion.button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setOpen(true)}
         whileHover={{
           scale: 1.05
         }}
         whileTap={{
           scale: 0.95
         }}
-        className={`fixed bottom-6 right-4 sm:right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-2xl z-50 transition-colors duration-300 ${isOpen ? 'bg-dark-800 border border-white/10 text-gray-400 hover:text-white' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-purple-500/30'}`}>
+        className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] right-4 sm:right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-2xl z-[61] bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-purple-500/30 transition-colors duration-300">
         
         <AnimatePresence mode="wait">
-          {isOpen ?
-          <motion.div
-            key="close"
-            initial={{
-              opacity: 0,
-              rotate: -90
-            }}
-            animate={{
-              opacity: 1,
-              rotate: 0
-            }}
-            exit={{
-              opacity: 0,
-              rotate: 90
-            }}
-            transition={{
-              duration: 0.2
-            }}>
-            
-              <XIcon className="h-6 w-6" />
-            </motion.div> :
-
           <motion.div
             key="chat"
             initial={{
@@ -1828,7 +1841,7 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual (English, Tagalog/Filipino
               duration: 0.2
             }}
             className="relative">
-            
+          
               <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10">
                 <img
                 src={CITEZEN_LOGO}
@@ -1837,15 +1850,15 @@ IMPORTANT LANGUAGE INSTRUCTIONS: You are multilingual (English, Tagalog/Filipino
               
               </div>
               {activeSession?.messages.length === 1 &&
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-purple-600"></span>
-                </span>
-            }
-            </motion.div>
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-purple-600"></span>
+              </span>
           }
+            </motion.div>
         </AnimatePresence>
       </motion.button>
+      }
     </>);
 
 }

@@ -7,6 +7,7 @@ import { ConcernCard } from '../components/ConcernCard';
 import { ConcernForm } from '../components/ConcernForm';
 import { ConcernDetail } from '../components/ConcernDetail';
 import { ProfileSection } from '../components/ProfileSection';
+import { ChatBubble } from '../components/ChatBubble';
 import {
   FileTextIcon,
   ClockIcon,
@@ -36,6 +37,7 @@ export function StudentDashboard({
   );
   const [filterStatus, setFilterStatus] = useState<ConcernStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [gabAiOpen, setGabAiOpen] = useState(false);
   const { concerns, submitConcern, addComment } = concernsData;
   const myConcerns = concerns.filter((c: any) => c.studentId === user.id);
   const filteredConcerns = myConcerns.filter((c: any) => {
@@ -84,6 +86,7 @@ export function StudentDashboard({
     }
   };
   return (
+    <>
     <DashboardLayout
       user={user}
       role="student"
@@ -91,7 +94,8 @@ export function StudentDashboard({
       onTabChange={setActiveTab}
       onLogout={onLogout}
       onNavigate={onNavigate}
-      concernsData={concernsData}>
+      concernsData={concernsData}
+      onOpenGabAi={() => setGabAiOpen(true)}>
       
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' &&
@@ -326,6 +330,13 @@ export function StudentDashboard({
         }}
         onClose={() => setSelectedConcernId(null)}
       />
-    </DashboardLayout>);
+    </DashboardLayout>
+    <ChatBubble
+      user={user}
+      open={gabAiOpen}
+      onOpenChange={setGabAiOpen}
+    />
+    </>
+  );
 
 }
